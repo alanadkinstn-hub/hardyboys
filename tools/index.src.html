@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hardy Boys Collection</title>
+<meta name="theme-color" content="#14213d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hardy Shelf">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--navy:#14213d;--navy2:#1f3160;--gold:#c9a227;--gold2:#e6c65c;--cream:#f7f1e1;--paper:#fffdf7;--ink:#1b1b1b;--muted:#6b6b6b;--line:#e4dcc6;--ok:#2e7d4f;--red:#a33;
+--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.serif{font-family:Georgia,"Times New Roman",serif}
+header{position:sticky;top:0;z-index:10;background:var(--navy);color:var(--cream);padding:calc(var(--safe-t) + 10px) 14px 10px;border-bottom:3px solid var(--gold);display:flex;align-items:center;gap:10px}
+header h1{font:700 19px/1.2 Georgia,serif;margin:0;flex:1;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .back{background:none;border:0;color:var(--gold2);font-size:17px;padding:4px 6px 4px 0;cursor:pointer}
+header .hbadge{width:30px;height:30px;border:2px solid var(--gold);display:grid;place-items:center;font:700 13px Georgia,serif;color:var(--cream)}
+main{padding:12px 12px calc(84px + var(--safe-b));max-width:760px;margin:0 auto}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--navy);display:flex;border-top:2px solid var(--gold);padding-bottom:var(--safe-b)}
+nav.tabs a{flex:1;text-align:center;color:#c8cfe0;text-decoration:none;font-size:11px;padding:8px 0 7px}
+nav.tabs a .ic{display:block;font-size:20px;line-height:24px}
+nav.tabs a.on{color:var(--gold2)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.serieshead{font:700 13px/1 -apple-system,sans-serif;color:var(--navy2);text-transform:uppercase;letter-spacing:1px;margin:18px 4px 8px}
+.scard{display:block;text-decoration:none;color:inherit}
+.scard h3{margin:0 0 2px;font:700 17px/1.25 Georgia,serif;color:var(--navy)}
+.scard .sub{color:var(--muted);font-size:13px}
+.bar{height:8px;background:#ece4cc;border-radius:5px;overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.stat{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px}
+.hero{background:var(--navy);color:var(--cream);border-radius:14px;padding:14px 16px;margin-bottom:12px;border:2px solid var(--gold)}
+.hero .big{font:700 28px Georgia,serif;color:var(--gold2)}
+.hero .row{display:flex;gap:18px;flex-wrap:wrap}
+.hero .lbl{font-size:12px;opacity:.8}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.chip{border:1px solid var(--navy2);background:var(--paper);color:var(--navy2);border-radius:16px;padding:6px 12px;font-size:14px;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--navy2);color:#fff}
+.list{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sub-h{background:#efe7cf;color:var(--navy);font:700 12px/1 sans-serif;letter-spacing:1px;text-transform:uppercase;padding:8px 12px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-top:1px solid var(--line);cursor:pointer}
+.list .row:first-child{border-top:0}
+.num{min-width:38px;height:38px;border-radius:8px;background:var(--navy);color:var(--gold2);display:grid;place-items:center;font:700 14px Georgia,serif}
+.row.owned .num{background:var(--gold);color:var(--navy)}
+.rmain{flex:1;min-width:0}
+.rt{font:600 15.5px/1.25 Georgia,serif;color:var(--ink)}
+.rs{font-size:12.5px;color:var(--muted);margin-top:2px}
+.badges{display:inline-flex;gap:4px;margin-left:4px;vertical-align:1px}
+.b{font:700 10.5px/1 sans-serif;padding:3px 5px;border-radius:4px;background:#e9e2cc;color:#555}
+.b.ot{background:#7a2e1f;color:#fff}.b.rt{background:#1f4e7a;color:#fff}.b.dj{background:var(--gold);color:var(--navy)}.b.w{background:#fff3c4;color:#7a5a00;border:1px solid var(--gold)}
+.own{width:44px;height:44px;border-radius:50%;border:2px solid var(--navy2);background:#fff;color:var(--navy2);font-size:20px;cursor:pointer;flex:none;display:grid;place-items:center;font-weight:700}
+.own.on{background:var(--ok);border-color:var(--ok);color:#fff;font-size:15px}
+.star{background:none;border:0;font-size:22px;color:#c9c0a5;cursor:pointer;padding:4px;flex:none}
+.star.on{color:var(--gold)}
+input[type=search],input[type=text],input[type=number],input[type=date],select,textarea{width:100%;font:16px/1.3 inherit;padding:10px 12px;border:1px solid #cfc5a8;border-radius:10px;background:#fff;color:var(--ink);font-family:inherit}
+textarea{min-height:70px}
+label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:600;color:var(--navy2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:inline-block;border:0;border-radius:10px;padding:11px 16px;font:600 15px inherit;background:var(--navy2);color:#fff;cursor:pointer;text-decoration:none;font-family:inherit}
+.btn.gold{background:var(--gold);color:var(--navy)}.btn.ghost{background:transparent;color:var(--navy2);border:1px solid var(--navy2)}.btn.red{background:var(--red)}
+.btn.block{display:block;width:100%;text-align:center;margin-top:10px}
+.seg{display:flex;border:1px solid var(--navy2);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:#fff;color:var(--navy2);padding:10px 4px;font:600 14px inherit;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--navy2);color:#fff}
+.copy{display:flex;gap:12px;align-items:flex-start}
+.copy img{width:64px;height:86px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.ph{width:64px;height:86px;border-radius:6px;background:#efe7cf;display:grid;place-items:center;color:#a99a6d;font-size:26px;flex:none}
+.muted{color:var(--muted)}.small{font-size:13px}
+.note{background:#fff8e1;border-left:3px solid var(--gold);padding:8px 10px;border-radius:6px;font-size:14px;margin:8px 0}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + var(--safe-b));background:#222;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;display:none;z-index:50;gap:12px;align-items:center;max-width:92vw}
+#toast button{background:none;border:0;color:var(--gold2);font-weight:700;font-size:14px;cursor:pointer}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + var(--safe-b))}
+.sheet h4{margin:0 0 4px;font:700 17px Georgia,serif;color:var(--navy)}
+.sheet .btn{display:block;width:100%;margin-top:8px}
+.photoPrev{max-width:160px;max-height:220px;border-radius:8px;border:1px solid var(--line);display:block;margin:6px 0}
+.about p,.about li{font-size:14.5px}
+.about a{color:var(--navy2)}
+.banner{background:#fff3c4;border:1px solid var(--gold);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:10px}
+details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
+</style>
+</head>
+<body>
+<header><button class="back" id="backBtn" hidden aria-label="Back">‹ Back</button><div class="hbadge" id="hb">HB</div><h1 id="title">Hardy Boys Collection</h1></header>
+<main id="app"><div class="empty">Loading…</div></main>
+<nav class="tabs">
+ <a href="#/" data-t="home"><span class="ic">📚</span>Shelf</a>
+ <a href="#/search" data-t="search"><span class="ic">🔍</span>Search</a>
+ <a href="#/wish" data-t="wish"><span class="ic">★</span>Wishlist</a>
+ <a href="#/more" data-t="more"><span class="ic">⚙︎</span>Backup &amp; More</a>
+</nav>
+<div id="toast"><span id="toastMsg"></span><button id="toastAct"></button></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<script>
+const SERIES = /*DATA*/;
+const APP_VERSION = '/*VERSION*/';
+</script>
+<script>
+'use strict';
+// ---------- storage (IndexedDB with localStorage fallback) ----------
+const DB_NAME='hardyboys-catalog', STORE='kv';
+let idb=null;
+function openDB(){return new Promise(res=>{try{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>{idb=r.result;res(true)};r.onerror=()=>res(false)}catch(e){res(false)}})}
+function kvGet(k){if(!idb){try{return Promise.resolve(JSON.parse(localStorage.getItem('hb_'+k)))}catch(e){return Promise.resolve(null)}}
+ return new Promise(res=>{const t=idb.transaction(STORE).objectStore(STORE).get(k);t.onsuccess=()=>res(t.result??null);t.onerror=()=>res(null)})}
+function kvSet(k,v){if(!idb){localStorage.setItem('hb_'+k,JSON.stringify(v));return Promise.resolve()}
+ return new Promise((res,rej)=>{const tx=idb.transaction(STORE,'readwrite');tx.objectStore(STORE).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+
+const S={copies:[],wish:{},custom:[],meta:{}};
+async function load(){await openDB();S.copies=(await kvGet('copies'))||[];S.wish=(await kvGet('wish'))||{};S.custom=(await kvGet('custom'))||[];S.meta=(await kvGet('meta'))||{};
+ if(navigator.storage&&navigator.storage.persist){try{await navigator.storage.persist()}catch(e){}}}
+async function save(){await Promise.all([kvSet('copies',S.copies),kvSet('wish',S.wish),kvSet('custom',S.custom),kvSet('meta',S.meta)])}
+
+// ---------- catalog helpers ----------
+function allSeries(){const cs=S.custom.length?[{key:'custom',name:'My Additions',short:'My Additions',publisher:'Added by you',note:'Titles you added that are not in the built-in checklist (e.g., foreign editions, graphic novels, oddities).',group:'Mine',books:S.custom}]:[];return SERIES.concat(cs)}
+const BOOK={}; function indexBooks(){for(const k in BOOK)delete BOOK[k];for(const s of allSeries())for(const b of s.books)BOOK[s.key+'-'+b.n]={...b,sk:s.key,sname:s.short,id:s.key+'-'+b.n}}
+const hasTexts=b=>b.ry!=null; // OT/RT applies
+function copiesOf(id){return S.copies.filter(c=>c.bookId===id)}
+function ownedOf(id){return S.copies.some(c=>c.bookId===id)}
+function textOwned(id,t){return S.copies.some(c=>c.bookId===id&&c.text===t)}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+function seriesStats(s){let own=0,ot=0,rt=0,tx=0,wish=0;for(const b of s.books){const id=s.key+'-'+b.n;if(ownedOf(id))own++;if(S.wish[id])wish++;if(b.ry!=null){tx++;if(textOwned(id,'Original'))ot++;if(textOwned(id,'Revised'))rt++}}return{own,total:s.books.length,ot,rt,tx,wish}}
+const pct=(a,b)=>b?Math.round(100*a/b):0;
+
+const FORMATS=[
+ ['Grosset & Dunlap (canon)',['Red cloth (1927–32)','Brown cloth (1932–51)','Tan tweed (1951–62)','Picture cover / “applecover” (1962+)','G&D flashlight picture cover reprint (2005–13)','G&D other / book club']],
+ ['Simon & Schuster',['Wanderer paperback','Wanderer hardcover','Minstrel digest paperback','Aladdin digest paperback','Archway mass-market paperback','Aladdin paperback','Hardcover (S&S / Aladdin)','Library binding']],
+ ['Other',['Applewood facsimile','British / foreign edition','Omnibus / 2-in-1 / 3-in-1','Other']]];
+const ENDPAPERS=['','Brown Gretta (1932)','Orange Gretta (1932–58)','Brown multi-scene (1959–72)','White multi-scene (1961–79)','Cameo (1979–87)','Plain / blank','Other'];
+const CONDS=['','Fine','Near Fine','Very Good','Good','Fair','Poor'];
+
+// ---------- UI plumbing ----------
+let toastTimer;function toast(msg,actLabel,act){const t=$('#toast');$('#toastMsg').textContent=msg;const b=$('#toastAct');b.textContent=actLabel||'';b.style.display=actLabel?'':'none';b.onclick=()=>{t.style.display='none';act&&act()};t.style.display='flex';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',4000)}
+function setHeader(title,back){$('#title').textContent=title;$('#backBtn').hidden=!back;$('#hb').hidden=!!back}
+$('#backBtn').onclick=()=>history.length>1?history.back():(location.hash='#/');
+function setTab(t){document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===t))}
+const UI={filter:{},q:''};
+
+function sheet(html){const bg=document.createElement('div');bg.className='sheet-bg';bg.innerHTML='<div class="sheet">'+html+'</div>';bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);return bg}
+
+// ---------- rows ----------
+function rowHTML(b){const id=b.id,cs=copiesOf(id),own=cs.length>0,w=!!S.wish[id];
+ let badges='';if(hasTexts(b)){if(textOwned(id,'Original'))badges+='<span class="b ot">OT</span>';if(textOwned(id,'Revised'))badges+='<span class="b rt">RT</span>'}
+ if(cs.some(c=>c.dj))badges+='<span class="b dj">DJ</span>';if(w)badges+='<span class="b w">WANT</span>';
+ let sub=[];if(b.y)sub.push(b.m?b.m.slice(0,3)+' '+b.y:b.y);if(b.ry)sub.push('Rev. '+b.ry);if(UI.showSeries)sub.unshift(b.sname);
+ return `<div class="row${own?' owned':''}" data-id="${id}"><div class="num">${esc(b.n)}</div><div class="rmain"><div class="rt">${esc(b.t)}</div><div class="rs">${esc(sub.join(' · '))}${badges?'<span class="badges">'+badges+'</span>':''}</div></div>
+ <button class="star${w?' on':''}" data-star="${id}" aria-label="Wishlist">${w?'★':'☆'}</button><button class="own${own?' on':''}" data-own="${id}" aria-label="Own it">${own?(cs.length>1?'×'+cs.length:'✓'):'+'}</button></div>`}
+function bindRows(root,rerender){root.querySelectorAll('[data-own]').forEach(el=>el.onclick=e=>{e.stopPropagation();quickOwn(el.dataset.own,rerender)});
+ root.querySelectorAll('[data-star]').forEach(el=>el.onclick=e=>{e.stopPropagation();toggleWish(el.dataset.star);rerender()});
+ root.querySelectorAll('.row[data-id]').forEach(el=>el.onclick=()=>location.hash='#/b/'+el.dataset.id)}
+
+async function addCopy(id,extra){const b=BOOK[id];const c={id:uid(),bookId:id,text:hasTexts(b)?'':'N/A',format:'',dj:false,first:false,listTo:'',endpapers:'',printing:'',cond:'',djCond:'',price:'',acquired:new Date().toISOString().slice(0,10),source:'',notes:'',photo:'',created:Date.now(),...extra};
+ S.copies.push(c);let unwished=false;if(S.wish[id]&&!S.wish[id].keep){delete S.wish[id];unwished=true}await save();return {c,unwished}}
+async function quickOwn(id,rerender){const b=BOOK[id];const n=copiesOf(id).length;
+ const go=async(extra)=>{const {c}=await addCopy(id,extra);rerender();toast(`Added ${n?'another ':''}copy of #${b.n}`+(extra.text&&extra.text!=='N/A'?` (${extra.text} text)`:''),'Undo',async()=>{S.copies=S.copies.filter(x=>x.id!==c.id);await save();rerender()})};
+ if(hasTexts(b)){const bg=sheet(`<h4>#${esc(b.n)} ${esc(b.t)}</h4><div class="muted small">Which text is this copy?</div>
+  <button class="btn" data-x="Original" style="background:#7a2e1f">Original text (${b.y})</button><button class="btn" data-x="Revised" style="background:#1f4e7a">Revised text (${b.ry}+)</button><button class="btn ghost" data-x="">Not sure yet</button>`);
+  bg.querySelectorAll('[data-x]').forEach(el=>el.onclick=()=>{bg.remove();go({text:el.dataset.x})})}
+ else go({})}
+async function toggleWish(id){if(S.wish[id])delete S.wish[id];else S.wish[id]={added:Date.now(),note:''};await save()}
+
+// ---------- views ----------
+function viewHome(){setHeader('Hardy Boys Collection');setTab('home');
+ const ser=allSeries();let titles=0,owned=0;for(const s of ser){const st=seriesStats(s);titles+=st.total;owned+=st.own}
+ const spent=S.copies.reduce((a,c)=>a+(parseFloat(c.price)||0),0);
+ let h=`<div class="hero"><div class="serif" style="font-size:15px;opacity:.9">Bayport Detective Agency · Case Files</div><div class="row" style="margin-top:6px">
+ <div><div class="big">${owned}</div><div class="lbl">titles owned</div></div><div><div class="big">${S.copies.length}</div><div class="lbl">copies</div></div><div><div class="big">${Object.keys(S.wish).length}</div><div class="lbl">wanted</div></div>${spent?`<div><div class="big">$${spent.toFixed(0)}</div><div class="lbl">invested</div></div>`:''}</div></div>`;
+ const last=S.meta.lastBackup;if(S.copies.length>=5&&(!last||Date.now()-last>30*864e5))h+=`<div class="banner">💾 ${last?'Your last backup was over a month ago.':'You haven’t backed up yet.'} <a href="#/more">Export a backup</a> so your catalog is safe.</div>`;
+ let grp='';for(const s of ser){if(s.group!==grp){grp=s.group;h+=`<div class="serieshead">${esc({Main:'Hardy Boys Mystery Stories',Spinoffs:'Spinoffs & Crossovers',Modern:'Modern Series','Younger readers':'Younger Readers',Mine:'Your Additions'}[grp]||grp)}</div>`}
+  const st=seriesStats(s);h+=`<a class="card scard" href="#/s/${s.key}"><h3>${esc(s.short)}</h3><div class="sub">${esc(s.name)} · ${esc(s.publisher)}</div><div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div>
+  <div class="stat"><span>${st.own} of ${st.total} owned${st.tx?` · OT ${st.ot}/${st.tx} · RT ${st.rt}/${st.tx}`:''}</span><span>${pct(st.own,st.total)}%</span></div></a>`}
+ $('#app').innerHTML=h;window.scrollTo(0,UI.homeScroll||0)}
+
+function viewSeries(key){const s=allSeries().find(x=>x.key===key);if(!s)return viewHome();setHeader(s.short,true);setTab('home');UI.showSeries=false;
+ const f=UI.filter[key]||'all';const st=seriesStats(s);
+ const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);
+ let h=`<div class="card"><div class="serif" style="font-weight:700;color:var(--navy)">${esc(s.name)}</div><div class="small muted">${esc(s.publisher)}</div>${s.note?`<div class="small" style="margin-top:6px">${esc(s.note)}</div>`:''}
+ <div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div><div class="stat"><span>${st.own} / ${st.total} owned · ${st.total-st.own} missing</span><span>${pct(st.own,st.total)}%</span></div>
+ ${st.tx?`<div class="stat"><span>Original text ${st.ot}/${st.tx} · Revised text ${st.rt}/${st.tx}</span></div>`:''}</div>
+ <div class="chips">${fl.map(([k,l])=>`<button class="chip${f===k?' on':''}" data-f="${k}">${l}</button>`).join('')}</div>`;
+ const books=s.books.map(b=>BOOK[key+'-'+b.n]).filter(b=>{const id=b.id;switch(f){case'owned':return ownedOf(id);case'missing':return!ownedOf(id);case'wanted':return!!S.wish[id];case'needot':return hasTexts(b)&&!textOwned(id,'Original');case'needrt':return hasTexts(b)&&!textOwned(id,'Revised');case'dupes':return copiesOf(id).length>1;default:return true}});
+ if(!books.length)h+='<div class="empty">Nothing here with this filter.</div>';
+ else{h+='<div class="list">';let imp='';for(const b of books){if(b.imp&&b.imp!==imp){imp=b.imp;h+=`<div class="sub-h">${esc(imp)} editions</div>`}h+=rowHTML(b)}h+='</div>'}
+ if(key==='custom')h+=`<a class="btn block ghost" href="#/addcustom">+ Add another title</a>`;
+ const y=window.scrollY;$('#app').innerHTML=h;
+ $('#app').querySelectorAll('[data-f]').forEach(el=>el.onclick=()=>{UI.filter[key]=el.dataset.f;viewSeries(key)});
+ bindRows($('#app'),()=>{const y2=window.scrollY;viewSeries(key);window.scrollTo(0,y2)})}
+
+function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n+' · '+b.sname,true);setTab('home');
+ const s=allSeries().find(x=>x.key===b.sk);const cs=copiesOf(id);const w=S.wish[id];
+ let h=`<div class="card"><div class="small muted">${esc(s.name)} #${esc(b.n)}${b.imp?' · '+esc(b.imp):''}</div><div class="serif" style="font-size:22px;font-weight:700;color:var(--navy);margin:4px 0">${esc(b.t)}</div>
+ <div class="small">${b.y?'First published '+(b.m?b.m+' ':'')+b.y:'Year not listed in sources'}${b.ry?` · Revised text ${b.ry}`:''}</div>
+ ${b.alt?`<div class="note">${esc(b.alt)}</div>`:''}${b.q?`<div class="note">ℹ︎ ${esc(b.q)}</div>`:''}
+ ${hasTexts(b)?`<div class="small" style="margin-top:6px">Own: <span class="b ${textOwned(id,'Original')?'ot':''}">Original text ${textOwned(id,'Original')?'✓':'—'}</span> <span class="b ${textOwned(id,'Revised')?'rt':''}">Revised text ${textOwned(id,'Revised')?'✓':'—'}</span></div>`:''}</div>
+ <div class="card"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:700;color:var(--navy2)">${w?'★ On your wishlist':'☆ Not on wishlist'}</div><button class="btn ${w?'ghost':'gold'}" id="wishBtn">${w?'Remove':'Add to wishlist'}</button></div>
+ ${w?`<label class="f">What you’re looking for</label><input type="text" id="wishNote" placeholder="e.g., OT with DJ, brown cloth, VG or better" value="${esc(w.note||'')}"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="wishKeep" ${w.keep?'checked':''}> Keep on wishlist after I add a copy (upgrade hunting)</label>`:''}</div>
+ <div class="serieshead">Your copies (${cs.length})</div>`;
+ if(!cs.length)h+='<div class="card empty" style="padding:18px">You don’t have this one yet.</div>';
+ for(const c of cs){const bits=[c.text&&c.text!=='N/A'?c.text+' text':'',c.format,c.dj?'with DJ'+(c.djCond?' ('+c.djCond+')':''):'',c.cond,c.first?'1st printing':'',c.listTo?'lists to #'+c.listTo:''].filter(Boolean);
+  h+=`<div class="card copy" data-copy="${c.id}" style="cursor:pointer">${c.photo?`<img src="${c.photo}" alt="">`:'<div class="ph">📖</div>'}<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(bits.join(' · ')||'Copy (no details yet)')}</div>
+  <div class="small muted">${[c.price?'$'+c.price:'',c.acquired?'Acquired '+c.acquired:'',c.source].filter(Boolean).map(esc).join(' · ')}</div>${c.printing?`<div class="small">${esc(c.printing)}</div>`:''}${c.notes?`<div class="small muted">${esc(c.notes)}</div>`:''}<div class="small" style="color:var(--navy2);margin-top:4px">Edit ›</div></div></div>`}
+ h+=`<a class="btn block gold" href="#/c/${id}/new">+ Add a copy</a>`;
+ if(b.sk==='custom')h+=`<button class="btn block ghost" id="delCustom">Delete this custom title</button>`;
+ $('#app').innerHTML=h;window.scrollTo(0,0);
+ $('#wishBtn').onclick=async()=>{await toggleWish(id);viewBook(id)};
+ const wn=$('#wishNote');if(wn)wn.onchange=async()=>{S.wish[id].note=wn.value;await save();toast('Wishlist note saved')};
+ const wk=$('#wishKeep');if(wk)wk.onchange=async()=>{S.wish[id].keep=wk.checked;await save()};
+ $('#app').querySelectorAll('[data-copy]').forEach(el=>el.onclick=()=>location.hash=`#/c/${id}/${el.dataset.copy}`);
+ const dc=$('#delCustom');if(dc)dc.onclick=async()=>{if(!confirm('Delete this custom title and its copies?'))return;S.custom=S.custom.filter(x=>'custom-'+x.n!==id);S.copies=S.copies.filter(c=>c.bookId!==id);delete S.wish[id];await save();indexBooks();location.hash='#/'}}
+
+function viewCopy(id,cid){const b=BOOK[id];if(!b)return viewHome();const isNew=cid==='new';const c=isNew?{text:'',format:'',dj:false,first:false,listTo:'',endpapers:'',printing:'',cond:'',djCond:'',price:'',acquired:new Date().toISOString().slice(0,10),source:'',notes:'',photo:''}:S.copies.find(x=>x.id===cid);
+ if(!c)return viewBook(id);setHeader((isNew?'Add copy · #':'Edit copy · #')+b.n,true);setTab('home');
+ const opt=(arr,v)=>arr.map(o=>`<option${o===v?' selected':''}>${esc(o)}</option>`).join('');
+ const fmtKnown=FORMATS.some(g=>g[1].includes(c.format));
+ let h=`<div class="card"><div class="serif" style="font-weight:700;color:var(--navy)">${esc(b.t)}</div><div class="small muted">${esc(b.sname)} #${esc(b.n)}</div>
+ ${hasTexts(b)?`<label class="f">Text version</label><div class="seg" id="textSeg">${['Original','Revised',''].map(t=>`<button type="button" data-t="${t}" class="${c.text===t?'on':''}">${t||'Not sure'}</button>`).join('')}</div><div class="small muted" style="margin-top:4px">Original text first published ${b.y} · Revised text introduced ${b.ry}</div>`:''}
+ <label class="f">Format / binding</label><select id="format"><option value="">— choose —</option>${FORMATS.map(([g,a])=>`<optgroup label="${esc(g)}">${opt(a,c.format)}</optgroup>`).join('')}${c.format&&!fmtKnown?`<option selected>${esc(c.format)}</option>`:''}</select>
+ <div class="two"><div><label class="f">Dust jacket</label><div class="seg" id="djSeg"><button type="button" data-v="1" class="${c.dj?'on':''}">Yes</button><button type="button" data-v="0" class="${c.dj?'':'on'}">No</button></div></div>
+ <div><label class="f">First printing?</label><div class="seg" id="firstSeg"><button type="button" data-v="1" class="${c.first?'on':''}">Yes</button><button type="button" data-v="0" class="${c.first?'':'on'}">No/?</button></div></div></div>
+ <div class="two"><div><label class="f">Condition (book)</label><select id="cond">${opt(CONDS,c.cond)}</select></div><div id="djCondWrap" ${c.dj?'':'hidden'}><label class="f">DJ condition</label><select id="djCond">${opt(CONDS,c.djCond)}</select></div></div>
+ <div class="two"><div><label class="f">Lists to # (last title listed)</label><input type="number" inputmode="numeric" id="listTo" value="${esc(c.listTo)}" placeholder="e.g. 38"></div><div><label class="f">Endpapers</label><select id="endpapers">${ENDPAPERS.map(o=>`<option value="${esc(o)}"${o===c.endpapers?' selected':''}>${esc(o||'—')}</option>`).join('')}</select></div></div>
+ <label class="f">Printing / edition notes</label><input type="text" id="printing" value="${esc(c.printing)}" placeholder="e.g., DJ flap lists to Twisted Claw; $1 box; 1st PC">
+ <div class="two"><div><label class="f">Price paid ($)</label><input type="number" inputmode="decimal" step="0.01" id="price" value="${esc(c.price)}"></div><div><label class="f">Date acquired</label><input type="date" id="acquired" value="${esc(c.acquired)}"></div></div>
+ <label class="f">Acquired from</label><input type="text" id="source" value="${esc(c.source)}" placeholder="e.g., eBay, McKay's, estate sale">
+ <label class="f">Notes</label><textarea id="notes" placeholder="Inscriptions, flaws, provenance…">${esc(c.notes)}</textarea>
+ <label class="f">Photo</label><div id="photoBox">${c.photo?`<img class="photoPrev" src="${c.photo}">`:''}</div>
+ <div style="display:flex;gap:8px"><label class="btn ghost" style="flex:1;text-align:center">📷 ${c.photo?'Replace':'Add'} photo<input type="file" accept="image/*" id="photo" hidden></label>${c.photo?'<button class="btn ghost" id="rmPhoto" type="button">Remove</button>':''}</div>
+ <button class="btn block gold" id="saveBtn">${isNew?'Add to collection':'Save changes'}</button>
+ ${isNew?'':'<button class="btn block red" id="delBtn">Delete this copy</button>'}</div>`;
+ $('#app').innerHTML=h;window.scrollTo(0,0);
+ const st={text:c.text,dj:!!c.dj,first:!!c.first,photo:c.photo};
+ const segBind=(sel,fn)=>{const r=$(sel);if(!r)return;r.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{r.querySelectorAll('button').forEach(x=>x.classList.remove('on'));bt.classList.add('on');fn(bt)})};
+ segBind('#textSeg',bt=>st.text=bt.dataset.t);segBind('#djSeg',bt=>{st.dj=bt.dataset.v==='1';$('#djCondWrap').hidden=!st.dj});segBind('#firstSeg',bt=>st.first=bt.dataset.v==='1');
+ $('#photo').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{st.photo=await resizeImage(f,900,.8);$('#photoBox').innerHTML=`<img class="photoPrev" src="${st.photo}">`}catch(err){toast('Could not read that photo')}};
+ const rp=$('#rmPhoto');if(rp)rp.onclick=()=>{st.photo='';$('#photoBox').innerHTML=''};
+ $('#saveBtn').onclick=async()=>{const v=k=>$('#'+k).value.trim();const data={text:hasTexts(b)?st.text:'N/A',format:v('format'),dj:st.dj,first:st.first,cond:v('cond'),djCond:st.dj?v('djCond'):'',listTo:v('listTo'),endpapers:$('#endpapers').value,printing:v('printing'),price:v('price'),acquired:v('acquired'),source:v('source'),notes:v('notes'),photo:st.photo,updated:Date.now()};
+  try{if(isNew){const r=await addCopy(id,data);toast('Copy added'+(r.unwished?' · removed from wishlist':''))}else{Object.assign(c,data);await save();toast('Saved')}history.back()}catch(err){toast('Save failed: storage may be full ('+err.message+')')}};
+ const db=$('#delBtn');if(db)db.onclick=async()=>{if(!confirm('Delete this copy?'))return;const keep=c;S.copies=S.copies.filter(x=>x.id!==c.id);await save();history.back();setTimeout(()=>toast('Copy deleted','Undo',async()=>{S.copies.push(keep);await save();route()}),50)}}
+
+function resizeImage(file,max,q){return new Promise((res,rej)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let{width:w,height:h}=img;const r=Math.min(1,max/Math.max(w,h));w=Math.round(w*r);h=Math.round(h*r);const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);res(cv.toDataURL('image/jpeg',q))};img.onerror=rej;img.src=url})}
+
+function viewSearch(){setHeader('Search');setTab('search');UI.showSeries=true;
+ $('#app').innerHTML=`<input type="search" id="q" placeholder="Title, number, or your notes…" value="${esc(UI.q)}" autocomplete="off"><div class="chips" style="margin-top:8px">${[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']].map(([k,l])=>`<button class="chip${(UI.sf||'all')===k?' on':''}" data-sf="${k}">${l}</button>`).join('')}</div><div id="res"></div>`;
+ const q=$('#q');const run=()=>{UI.q=q.value;const t=q.value.trim().toLowerCase();const sf=UI.sf||'all';const out=$('#res');
+  if(!t&&sf==='all'){out.innerHTML='<div class="empty">Search all '+Object.keys(BOOK).length+' titles across every series.<br><span class="small">Tip: type a number like “21” or words from your copy notes.</span></div>';return}
+  const res=Object.values(BOOK).filter(b=>{if(t){const hay=(b.t+' '+b.n+' '+(b.alt||'')+' '+copiesOf(b.id).map(c=>[c.notes,c.printing,c.source,c.format].join(' ')).join(' ')).toLowerCase();if(!(String(b.n)===t||t.split(/\s+/).every(w=>hay.includes(w))))return false}
+   if(sf==='owned')return ownedOf(b.id);if(sf==='missing')return!ownedOf(b.id);if(sf==='wanted')return!!S.wish[b.id];return true});
+  out.innerHTML=res.length?`<div class="small muted" style="margin:0 4px 6px">${res.length} result${res.length===1?'':'s'}</div><div class="list">${res.slice(0,300).map(rowHTML).join('')}</div>${res.length>300?'<div class="empty small">Showing first 300. Narrow your search.</div>':''}`:'<div class="empty">No matches.</div>';
+  bindRows(out,()=>{const y=window.scrollY;run();window.scrollTo(0,y)})};
+ q.oninput=run;$('#app').querySelectorAll('[data-sf]').forEach(el=>el.onclick=()=>{UI.sf=el.dataset.sf;viewSearch()});run();if(!UI.q)setTimeout(()=>q.focus(),50)}
+
+function wishText(){const lines=['Hardy Boys want list'];let cur='';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n,w=S.wish[id];if(!w)continue;if(cur!==s.key){cur=s.key;lines.push('',s.short)}lines.push(`#${b.n} ${b.t}${w.note?' — '+w.note:''}`)}return lines.join('\n')}
+function viewWish(){setHeader('Wishlist');setTab('wish');UI.showSeries=true;const ids=Object.keys(S.wish).filter(id=>BOOK[id]);
+ let h=ids.length?`<div class="small muted" style="margin:0 4px 8px">${ids.length} wanted · tap ☆ on any title to add. Notes show what you’re hunting for.</div>`:'<div class="empty">Your wishlist is empty.<br>Tap ☆ next to any title to add it.</div>';
+ if(ids.length){let cur='';h+='<div class="list">';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;if(!S.wish[id])continue;if(cur!==s.key){cur=s.key;h+=`<div class="sub-h">${esc(s.short)}</div>`}h+=rowHTML(BOOK[id]).replace('</div></div>',(S.wish[id].note?`<div class="small" style="color:#7a5a00">🔎 ${esc(S.wish[id].note)}</div>`:'')+'</div></div>')}h+='</div>';
+  h+=`<button class="btn block" id="shareWish">Share / copy want list</button><div class="small muted" style="text-align:center;margin-top:6px">Handy for book fairs and dealers.</div>`}
+ h+=`<button class="btn block ghost" id="fillMissing">Add all missing titles from a series…</button>`;
+ $('#app').innerHTML=h;bindRows($('#app'),viewWish);
+ const sw=$('#shareWish');if(sw)sw.onclick=async()=>{const t=wishText();if(navigator.share){try{await navigator.share({title:'Hardy Boys want list',text:t});return}catch(e){if(e.name==='AbortError')return}}try{await navigator.clipboard.writeText(t);toast('Want list copied')}catch(e){sheet(`<h4>Want list</h4><textarea style="min-height:240px">${esc(t)}</textarea>`)}};
+ $('#fillMissing').onclick=()=>{const bg=sheet('<h4>Add missing titles to wishlist</h4><div class="small muted">Pick a series. Only titles you don’t own are added.</div>'+allSeries().map(s=>`<button class="btn ghost" data-s="${s.key}">${esc(s.short)}</button>`).join(''));
+  bg.querySelectorAll('[data-s]').forEach(el=>el.onclick=async()=>{const s=allSeries().find(x=>x.key===el.dataset.s);let n=0;for(const b of s.books){const id=s.key+'-'+b.n;if(!ownedOf(id)&&!S.wish[id]){S.wish[id]={added:Date.now(),note:''};n++}}await save();bg.remove();viewWish();toast(`Added ${n} titles`)})}}
+
+// ---------- backup ----------
+function download(name,text,type){const blob=new Blob([text],{type});const f=new File([blob],name,{type});
+ if(navigator.canShare&&navigator.canShare({files:[f]})&&/iPhone|iPad|iPod/.test(navigator.userAgent)){navigator.share({files:[f],title:name}).catch(()=>{});return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+const stamp=()=>new Date().toISOString().slice(0,10);
+function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
+const csvCell=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo'];
+ const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'']});
+ rows.sort((a,b)=>String(a[0]).localeCompare(String(b[0]))||a[1]-b[1]);download(`hardy-boys-copies-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
+function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Copies owned','Own OT','Own RT','Wanted','Want note'];const rows=[];
+ for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;rows.push([s.short,b.n,b.t,b.m?b.m+' '+b.y:b.y,b.ry,copiesOf(id).length,b.ry!=null?(textOwned(id,'Original')?'Yes':''):'',b.ry!=null?(textOwned(id,'Revised')?'Yes':''):'',S.wish[id]?'Yes':'',S.wish[id]?.note||''])}
+ download(`hardy-boys-checklist-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
+async function importJSON(file,mode){const txt=await file.text();let d;try{d=JSON.parse(txt)}catch(e){toast('That file isn’t valid JSON');return}
+ if(d.app!=='hardyboys-catalog'||!Array.isArray(d.copies)){toast('Not a Hardy Boys catalog backup');return}
+ if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[]}
+ else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
+ await save();indexBooks();toast(`Imported: ${S.copies.length} copies now in catalog`);route()}
+
+function viewMore(){setHeader('Backup & More');setTab('more');
+ const last=S.meta.lastBackup?new Date(S.meta.lastBackup).toLocaleDateString():'never';const photos=S.copies.filter(c=>c.photo).length;
+ const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+ let h=`${standalone?'':`<div class="card"><div style="font-weight:700;color:var(--navy2)">📱 Put it on your iPhone home screen</div><div class="small">In Safari, tap the Share button, then <b>Add to Home Screen</b>. It opens like an app and works offline.</div></div>`}
+ <div class="card"><div style="font-weight:700;color:var(--navy2)">💾 Backup</div><div class="small muted">Your catalog lives only on this device. Last backup: <b>${esc(last)}</b>. ${S.copies.length} copies, ${photos} with photos.</div>
+ <button class="btn block gold" id="bkFull">Export full backup (JSON, with photos)</button><button class="btn block ghost" id="bkLite">Export backup without photos (smaller)</button>
+ <button class="btn block ghost" id="csvCopies">Export my copies (CSV for Excel/Numbers)</button><button class="btn block ghost" id="csvList">Export full checklist (CSV)</button>
+ <button class="btn block ghost" id="imp">Import / restore a backup…</button></div>
+ <div class="card"><div style="font-weight:700;color:var(--navy2)">➕ Add a title not in the checklist</div><div class="small muted">For British editions, graphic novels, oddities, etc.</div><a class="btn block ghost" href="#/addcustom">Add custom title</a></div>
+ <div class="card about"><details><summary>About the checklist &amp; sources</summary>
+ <p>Preloaded with ${Object.values(BOOK).filter(b=>b.sk!=='custom').length} titles across ${SERIES.length} series. Titles and years were taken from collector references and cross-checked; where a source gives no year, it’s left blank rather than guessed.</p>
+ <ul>
+ <li><a href="https://en.wikipedia.org/wiki/List_of_Hardy_Boys_books" target="_blank" rel="noopener">Wikipedia: List of Hardy Boys books</a>: all series lists, first-publication years, revised-text years, Casefiles months.</li>
+ <li><a href="https://www.hardyboysonline.net/content.php?page=series-canon-revisions" target="_blank" rel="noopener">Hardy Boys Online: Revisions (Canon)</a>: revision timeline used to cross-check #1–38.</li>
+ <li><a href="https://hardyboys.us/hbos.htm" target="_blank" rel="noopener">The Hardy Boys Unofficial Home Page (hardyboys.us): Original Series</a>: revision history, binding types (red cloth 1927–32, brown 1932–51, tan tweed 1951–62, picture covers from 1962) and endpaper types.</li>
+ <li><a href="https://en.wikipedia.org/wiki/Super_Mystery" target="_blank" rel="noopener">Wikipedia: Super Mystery</a>: the 1988–98 SuperMystery list.</li></ul>
+ <p class="small muted">Note: the first three books were written in 1926 and released as a “breeder set” in May 1927, so 1927 is shown as their publication year. #7 <i>The Secret of the Caves</i>: revised-text year is 1965 per Wikipedia and hardyboys.us (hardyboysonline.net says 1964).</p>
+ <p class="small muted">Not included yet: Papercutz graphic novels, British/Armada editions, Casefiles Collector’s Editions, Clue Book 3-in-1s. Add any of them as custom titles.</p>
+ <p class="small muted">Version ${esc(APP_VERSION)}</p></details></div>
+ <div class="card"><details><summary style="color:var(--red)">Danger zone</summary><div class="small muted" style="margin-top:6px">Erase everything on this device. Export a backup first.</div><button class="btn block red" id="wipe">Erase all my data</button></details></div>`;
+ $('#app').innerHTML=h;
+ $('#bkFull').onclick=()=>exportJSON(true);$('#bkLite').onclick=()=>exportJSON(false);$('#csvCopies').onclick=exportCopiesCSV;$('#csvList').onclick=exportChecklistCSV;
+ $('#imp').onclick=()=>{const bg=sheet('<h4>Restore a backup</h4><div class="small muted">Merge adds copies you don’t already have. Replace overwrites everything on this device.</div><button class="btn" data-m="merge">Choose file · Merge</button><button class="btn red" data-m="replace">Choose file · Replace all</button><button class="btn ghost" data-m="">Cancel</button>');
+  bg.querySelectorAll('[data-m]').forEach(el=>el.onclick=()=>{bg.remove();if(!el.dataset.m)return;const fi=$('#importFile');fi.value='';fi.onchange=()=>fi.files[0]&&importJSON(fi.files[0],el.dataset.m);fi.click()})};
+ $('#wipe').onclick=async()=>{if(!confirm('Erase ALL copies, wishlist and custom titles on this device?'))return;if(prompt('Type ERASE to confirm')!=='ERASE')return;S.copies=[];S.wish={};S.custom=[];await save();indexBooks();toast('All data erased');viewMore()}}
+
+function viewAddCustom(){setHeader('Add custom title',true);setTab('more');
+ $('#app').innerHTML=`<div class="card"><label class="f">Title</label><input type="text" id="ct"><label class="f">Series / description</label><input type="text" id="cs" placeholder="e.g., Armada UK paperback, Papercutz graphic novel #3"><label class="f">Year (optional)</label><input type="number" id="cy" inputmode="numeric"><button class="btn block gold" id="cadd">Add title</button></div>`;
+ $('#cadd').onclick=async()=>{const t=$('#ct').value.trim();if(!t)return toast('Enter a title');const n=(S.custom.reduce((a,c)=>Math.max(a,c.n),0))+1;S.custom.push({n,t,y:parseInt($('#cy').value)||null,alt:$('#cs').value.trim()});await save();indexBooks();location.replace('#/b/custom-'+n)}}
+
+// ---------- router ----------
+function route(){const h=location.hash.replace(/^#\/?/,'');const p=h.split('/');
+ if(p[0]==='s')viewSeries(p[1]);else if(p[0]==='b')viewBook(decodeURIComponent(p[1]));else if(p[0]==='c')viewCopy(decodeURIComponent(p[1]),p[2]);
+ else if(p[0]==='search')viewSearch();else if(p[0]==='wish')viewWish();else if(p[0]==='more')viewMore();else if(p[0]==='addcustom')viewAddCustom();else viewHome()}
+window.addEventListener('hashchange',()=>{if(!location.hash||location.hash==='#/'){}route()});
+window.addEventListener('scroll',()=>{if(!location.hash||location.hash==='#/')UI.homeScroll=window.scrollY},{passive:true});
+(async()=>{await load();indexBooks();route();
+ if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+</script>
+</body>
+</html>
