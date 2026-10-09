@@ -49,6 +49,19 @@ nav.tabs a.on{color:var(--gold2)}
 .list .row:first-child{border-top:0}
 .num{min-width:38px;height:38px;border-radius:8px;background:var(--navy);color:var(--gold2);display:grid;place-items:center;font:700 14px Georgia,serif}
 .row.owned .num{background:var(--gold);color:var(--navy)}
+.thumb{width:34px;height:50px;border-radius:3px;object-fit:cover;flex:none;background:#efe7cf;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.thumb.none{box-shadow:none;border:1px dashed #d8cda9}
+.b.rate{background:var(--navy);color:var(--gold2)}
+.coverwrap{display:flex;gap:14px;align-items:flex-start}
+.bigcover{width:132px;min-height:60px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);flex:none;background:#efe7cf;object-fit:cover}
+.nocover{width:132px;height:196px;border-radius:6px;border:2px dashed #d8cda9;display:grid;place-items:center;color:#a99a6d;font-size:13px;text-align:center;padding:8px;flex:none}
+.cap{font-size:12px;color:var(--muted);margin-top:6px}
+.cap a{color:var(--navy2)}
+.rates{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:8px}
+.rates button{height:40px;border-radius:8px;border:1px solid var(--navy2);background:#fff;color:var(--navy2);font:700 15px Georgia,serif;cursor:pointer;padding:0}
+.rates button.lit{background:#f3e3a6;border-color:var(--gold)}
+.rates button.on{background:var(--gold);border-color:var(--navy);color:var(--navy);box-shadow:inset 0 0 0 2px var(--navy)}
+.smallbtn{font-size:13px!important;padding:7px 10px!important}
 .rmain{flex:1;min-width:0}
 .rt{font:600 15.5px/1.25 Georgia,serif;color:var(--ink)}
 .rs{font-size:12.5px;color:var(--muted);margin-top:2px}
@@ -108,6 +121,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 const SERIES = /*DATA*/;
 const APP_VERSION = '/*VERSION*/';
+const COVERS = /*COVERS*/;
 </script>
 <script>
 'use strict';
@@ -120,10 +134,10 @@ function kvGet(k){if(!idb){try{return Promise.resolve(JSON.parse(localStorage.ge
 function kvSet(k,v){if(!idb){localStorage.setItem('hb_'+k,JSON.stringify(v));return Promise.resolve()}
  return new Promise((res,rej)=>{const tx=idb.transaction(STORE,'readwrite');tx.objectStore(STORE).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 
-const S={copies:[],wish:{},custom:[],meta:{}};
-async function load(){await openDB();S.copies=(await kvGet('copies'))||[];S.wish=(await kvGet('wish'))||{};S.custom=(await kvGet('custom'))||[];S.meta=(await kvGet('meta'))||{};
+const S={copies:[],wish:{},custom:[],meta:{},titles:{}};
+async function load(){await openDB();S.copies=(await kvGet('copies'))||[];S.wish=(await kvGet('wish'))||{};S.custom=(await kvGet('custom'))||[];S.meta=(await kvGet('meta'))||{};S.titles=(await kvGet('titles'))||{};
  if(navigator.storage&&navigator.storage.persist){try{await navigator.storage.persist()}catch(e){}}}
-async function save(){await Promise.all([kvSet('copies',S.copies),kvSet('wish',S.wish),kvSet('custom',S.custom),kvSet('meta',S.meta)])}
+async function save(){await Promise.all([kvSet('copies',S.copies),kvSet('wish',S.wish),kvSet('custom',S.custom),kvSet('meta',S.meta),kvSet('titles',S.titles)])}
 
 // ---------- catalog helpers ----------
 function allSeries(){const cs=S.custom.length?[{key:'custom',name:'My Additions',short:'My Additions',publisher:'Added by you',note:'Titles you added that are not in the built-in checklist (e.g., foreign editions, graphic novels, oddities).',group:'Mine',books:S.custom}]:[];return SERIES.concat(cs)}
@@ -137,6 +151,17 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const $=s=>document.querySelector(s);
 function seriesStats(s){let own=0,ot=0,rt=0,tx=0,wish=0;for(const b of s.books){const id=s.key+'-'+b.n;if(ownedOf(id))own++;if(S.wish[id])wish++;if(b.ry!=null){tx++;if(textOwned(id,'Original'))ot++;if(textOwned(id,'Revised'))rt++}}return{own,total:s.books.length,ot,rt,tx,wish}}
 const pct=(a,b)=>b?Math.round(100*a/b):0;
+// ---------- per-title data: rating + covers ----------
+const T=id=>S.titles[id]||(S.titles[id]={});
+const ratingOf=id=>(S.titles[id]&&S.titles[id].rating)||0;
+function tidyTitle(id){const t=S.titles[id];if(t&&!t.rating&&!t.cover)delete S.titles[id]}
+const olURL=(cid,sz)=>`https://covers.openlibrary.org/b/id/${cid}-${sz}.jpg`;
+function userCover(id){const t=S.titles[id];if(!t||!t.cover)return'';if(t.cover.startsWith('copy:')){const c=S.copies.find(x=>x.id===t.cover.slice(5));return(c&&c.photo)||''}return t.cover}
+function stockCovers(id){const c=COVERS[id];if(!c)return[];const o=[];if(c.ot)o.push({...c.ot,era:'ot'});if(c.rt)o.push({...c.rt,era:'rt'});if(c.c)o.push({...c.c,era:''});return o}
+function preferredStock(id){const st=stockCovers(id);if(st.length<2)return st[0];const ot=textOwned(id,'Original'),rt=textOwned(id,'Revised');return st.find(x=>x.era===(rt&&!ot?'rt':'ot'))||st[0]}
+function eraLabel(b,c){const ed=`${c.pub||'Unknown publisher'}${c.yr?' edition, '+c.yr:' edition'}`;
+ if(c.era==='ot')return c.fac?`Applewood facsimile${c.yr?' ('+c.yr+')':''}: reproduces original-text era art`:`Original-text era cover · ${ed}`;
+ if(c.era==='rt')return`Revised-text era cover · ${ed}`;return`Stock cover · ${ed}`}
 
 const FORMATS=[
  ['Grosset & Dunlap (canon)',['Red cloth (1927–32)','Red spine','Brown cloth (1932–51)','Tan tweed (1951–62)','Picture cover / “applecover” (1962+)','G&D flashlight picture cover reprint (2005–13)','G&D other / book club']],
@@ -159,11 +184,22 @@ function sheet(html){const bg=document.createElement('div');bg.className='sheet-
 // ---------- rows ----------
 function rowHTML(b){const id=b.id,cs=copiesOf(id),own=cs.length>0,w=!!S.wish[id];
  let badges='';if(hasTexts(b)){if(textOwned(id,'Original'))badges+='<span class="b ot">OT</span>';if(textOwned(id,'Revised'))badges+='<span class="b rt">RT</span>'}
- if(cs.some(c=>c.dj))badges+='<span class="b dj">DJ</span>';if(w)badges+='<span class="b w">WANT</span>';
+ if(cs.some(c=>c.dj))badges+='<span class="b dj">DJ</span>';if(w)badges+='<span class="b w">WANT</span>';const rr=ratingOf(id);if(rr)badges='<span class="b rate">★'+rr+'</span>'+badges;
+ let th='';if(!S.meta.hideCovers){const u=userCover(id),sc=u?null:preferredStock(id);th=u?`<img class="thumb" src="${u}" alt="">`:sc?`<img class="thumb pending" decoding="async" alt="" data-src="${olURL(sc.id,'M')}">`:'<div class="thumb none"></div>'}
  let sub=[];if(b.y)sub.push(b.m?b.m.slice(0,3)+' '+b.y:b.y);if(b.ry)sub.push('Rev. '+b.ry);if(UI.showSeries)sub.unshift(b.sname);
- return `<div class="row${own?' owned':''}" data-id="${id}"><div class="num">${esc(b.n)}</div><div class="rmain"><div class="rt">${esc(b.t)}</div><div class="rs">${esc(sub.join(' · '))}${badges?'<span class="badges">'+badges+'</span>':''}</div></div>
+ return `<div class="row${own?' owned':''}" data-id="${id}"><div class="num">${esc(b.n)}</div>${th}<div class="rmain"><div class="rt">${esc(b.t)}</div><div class="rs">${esc(sub.join(' · '))}${badges?'<span class="badges">'+badges+'</span>':''}</div></div>
  <button class="star${w?' on':''}" data-star="${id}" aria-label="Wishlist">${w?'★':'☆'}</button><button class="own${own?' on':''}" data-own="${id}" aria-label="Own it">${own?(cs.length>1?'×'+cs.length:'✓'):'+'}</button></div>`}
-function bindRows(root,rerender){root.querySelectorAll('[data-own]').forEach(el=>el.onclick=e=>{e.stopPropagation();quickOwn(el.dataset.own,rerender)});
+// Polite cover loading: only rows near the screen, max 2 at a time, retry with backoff (archive.org can return 503 under bursts).
+const thumbQ=[];let thumbActive=0;
+const thumbIO='IntersectionObserver' in window?new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){thumbIO.unobserve(e.target);thumbQ.push(e.target);pumpThumbs()}},{rootMargin:'300px 0px'}):null;
+function pumpThumbs(){while(thumbActive<2&&thumbQ.length){const img=thumbQ.shift();if(!img.isConnected)continue;thumbActive++;loadThumb(img,0)}}
+function loadThumb(img,tries){const done=()=>{thumbActive--;pumpThumbs()};
+ img.onload=()=>{img.classList.remove('pending');done()};
+ img.onerror=()=>{if(tries<3&&img.isConnected){setTimeout(()=>{img.removeAttribute('src');loadThumb(img,tries+1)},1500*(tries+1)*(tries+1))}else{img.className='thumb none';img.removeAttribute('src');done()}};
+ img.src=img.dataset.src}
+function observeThumbs(root){root.querySelectorAll('img.thumb[data-src]:not([src])').forEach(i=>thumbIO?thumbIO.observe(i):(i.src=i.dataset.src))}
+function coverRetry(img){const n=+(img.dataset.tries||0);if(n<2){img.dataset.tries=n+1;const u=img.src;setTimeout(()=>{if(img.isConnected){img.removeAttribute('src');img.src=u}},2000*(n+1))}else img.outerHTML='<div class="nocover">Cover unavailable right now (offline?)</div>'}
+function bindRows(root,rerender){observeThumbs(root);root.querySelectorAll('[data-own]').forEach(el=>el.onclick=e=>{e.stopPropagation();quickOwn(el.dataset.own,rerender)});
  root.querySelectorAll('[data-star]').forEach(el=>el.onclick=e=>{e.stopPropagation();toggleWish(el.dataset.star);rerender()});
  root.querySelectorAll('.row[data-id]').forEach(el=>el.onclick=()=>location.hash='#/b/'+el.dataset.id)}
 
@@ -195,14 +231,15 @@ function viewHome(){setHeader('Hardy Boys Collection');setTab('home');
 
 function viewSeries(key){const s=allSeries().find(x=>x.key===key);if(!s)return viewHome();setHeader(s.short,true);setTab('home');UI.showSeries=false;
  const f=UI.filter[key]||'all';const st=seriesStats(s);
- const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);
+ const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);fl.splice(4,0,['top','Top rated']);
  let h=`<div class="card"><div class="serif" style="font-weight:700;color:var(--navy)">${esc(s.name)}</div><div class="small muted">${esc(s.publisher)}</div>${s.note?`<div class="small" style="margin-top:6px">${esc(s.note)}</div>`:''}
  <div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div><div class="stat"><span>${st.own} / ${st.total} owned · ${st.total-st.own} missing</span><span>${pct(st.own,st.total)}%</span></div>
  ${st.tx?`<div class="stat"><span>Original text ${st.ot}/${st.tx} · Revised text ${st.rt}/${st.tx}</span></div>`:''}</div>
  <div class="chips">${fl.map(([k,l])=>`<button class="chip${f===k?' on':''}" data-f="${k}">${l}</button>`).join('')}</div>`;
- const books=s.books.map(b=>BOOK[key+'-'+b.n]).filter(b=>{const id=b.id;switch(f){case'owned':return ownedOf(id);case'missing':return!ownedOf(id);case'wanted':return!!S.wish[id];case'needot':return hasTexts(b)&&!textOwned(id,'Original');case'needrt':return hasTexts(b)&&!textOwned(id,'Revised');case'dupes':return copiesOf(id).length>1;default:return true}});
+ const books=s.books.map(b=>BOOK[key+'-'+b.n]).filter(b=>{const id=b.id;switch(f){case'owned':return ownedOf(id);case'missing':return!ownedOf(id);case'wanted':return!!S.wish[id];case'needot':return hasTexts(b)&&!textOwned(id,'Original');case'needrt':return hasTexts(b)&&!textOwned(id,'Revised');case'dupes':return copiesOf(id).length>1;case'top':return ratingOf(id)>0;default:return true}});
+ if(f==='top')books.sort((a,c)=>ratingOf(c.id)-ratingOf(a.id)||a.n-c.n);
  if(!books.length)h+='<div class="empty">Nothing here with this filter.</div>';
- else{h+='<div class="list">';let imp='';for(const b of books){if(b.imp&&b.imp!==imp){imp=b.imp;h+=`<div class="sub-h">${esc(imp)} editions</div>`}h+=rowHTML(b)}h+='</div>'}
+ else{h+='<div class="list">';let imp='';for(const b of books){if(f!=='top'&&b.imp&&b.imp!==imp){imp=b.imp;h+=`<div class="sub-h">${esc(imp)} editions</div>`}h+=rowHTML(b)}h+='</div>'}
  if(key==='custom')h+=`<a class="btn block ghost" href="#/addcustom">+ Add another title</a>`;
  const y=window.scrollY;$('#app').innerHTML=h;
  $('#app').querySelectorAll('[data-f]').forEach(el=>el.onclick=()=>{UI.filter[key]=el.dataset.f;viewSeries(key)});
@@ -214,6 +251,9 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  <div class="small">${b.y?'First published '+(b.m?b.m+' ':'')+b.y:'Year not listed in sources'}${b.ry?` · Revised text ${b.ry}`:''}</div>
  ${b.alt?`<div class="note">${esc(b.alt)}</div>`:''}${b.q?`<div class="note">ℹ︎ ${esc(b.q)}</div>`:''}
  ${hasTexts(b)?`<div class="small" style="margin-top:6px">Own: <span class="b ${textOwned(id,'Original')?'ot':''}">Original text ${textOwned(id,'Original')?'✓':'—'}</span> <span class="b ${textOwned(id,'Revised')?'rt':''}">Revised text ${textOwned(id,'Revised')?'✓':'—'}</span></div>`:''}</div>
+ ${coverCardHTML(b)}
+ <div class="card" id="rateCard"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;color:var(--navy2)">Your rating${ratingOf(id)?`: <span class="serif" style="color:var(--navy)">${ratingOf(id)}/10</span>`:''}</div>${ratingOf(id)?'<button class="btn ghost smallbtn" id="rateClear">Clear</button>':''}</div>
+ <div class="small muted">How good is the story? Tap 1–10 (tap again to clear).</div><div class="rates">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-rate="${n}" class="${ratingOf(id)===n?'on':ratingOf(id)>n?'lit':''}" aria-label="Rate ${n}">${n}</button>`).join('')}</div></div>
  <div class="card"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:700;color:var(--navy2)">${w?'★ On your wishlist':'☆ Not on wishlist'}</div><button class="btn ${w?'ghost':'gold'}" id="wishBtn">${w?'Remove':'Add to wishlist'}</button></div>
  ${w?`<label class="f">What you’re looking for</label><input type="text" id="wishNote" placeholder="e.g., OT with DJ, brown cloth, VG or better" value="${esc(w.note||'')}"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="wishKeep" ${w.keep?'checked':''}> Keep on wishlist after I add a copy (upgrade hunting)</label>`:''}</div>
  <div class="serieshead">Your copies (${cs.length})</div>`;
@@ -227,8 +267,29 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  $('#wishBtn').onclick=async()=>{await toggleWish(id);viewBook(id)};
  const wn=$('#wishNote');if(wn)wn.onchange=async()=>{S.wish[id].note=wn.value;await save();toast('Wishlist note saved')};
  const wk=$('#wishKeep');if(wk)wk.onchange=async()=>{S.wish[id].keep=wk.checked;await save()};
+ const keepY=()=>{const y=window.scrollY;viewBook(id);window.scrollTo(0,y)};
+ $('#app').querySelectorAll('[data-rate]').forEach(el=>el.onclick=async()=>{const n=+el.dataset.rate;if(ratingOf(id)===n)delete T(id).rating;else T(id).rating=n;tidyTitle(id);await save();keepY()});
+ const rc=$('#rateClear');if(rc)rc.onclick=async()=>{delete T(id).rating;tidyTitle(id);await save();keepY()};
+ bindCoverCard(b,keepY);
  $('#app').querySelectorAll('[data-copy]').forEach(el=>el.onclick=()=>location.hash=`#/c/${id}/${el.dataset.copy}`);
  const dc=$('#delCustom');if(dc)dc.onclick=async()=>{if(!confirm('Delete this custom title and its copies?'))return;S.custom=S.custom.filter(x=>'custom-'+x.n!==id);S.copies=S.copies.filter(c=>c.bookId!==id);delete S.wish[id];await save();indexBooks();location.hash='#/'}}
+
+function coverCardHTML(b){const id=b.id,u=userCover(id),st=stockCovers(id);UI.era=UI.era||{};
+ let cur=u?null:(st.find(x=>x.era===UI.era[id])||preferredStock(id));
+ const img=u?`<img class="bigcover" src="${u}" alt="Your cover photo">`:cur?`<img class="bigcover" id="bigcover" alt="Stock cover" src="${olURL(cur.id,'L')}" onerror="coverRetry(this)">`:'<div class="nocover">No stock cover found.<br>Add your own photo.</div>';
+ const eraSeg=!u&&st.length>1?`<div class="seg" style="margin-top:8px" id="eraSeg">${st.map(x=>`<button type="button" data-era="${x.era}" class="${cur&&x.era===cur.era?'on':''}">${x.era==='ot'?'Original era':'Revised era'}</button>`).join('')}</div>`:'';
+ const cap=u?'<b>Your photo</b> (overrides stock covers)':cur?`${esc(eraLabel(b,cur))}. <a href="https://openlibrary.org/books/${esc(cur.ed)}" target="_blank" rel="noopener">Open Library</a>`:'';
+ const copyPhotos=copiesOf(id).filter(c=>c.photo);
+ return `<div class="card"><div class="coverwrap">${img}<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--navy2)">Cover</div><div class="cap" id="coverCap">${cap}</div>${eraSeg}
+ <label class="btn ghost smallbtn" style="display:block;text-align:center;margin-top:8px">📷 ${u?'Change':'Set'} my cover<input type="file" accept="image/*" id="coverFile" hidden></label>
+ ${copyPhotos.length?'<button class="btn ghost smallbtn" style="display:block;width:100%;margin-top:6px" id="coverFromCopy">Use a copy photo</button>':''}
+ ${u?'<button class="btn ghost smallbtn" style="display:block;width:100%;margin-top:6px" id="coverRemove">Remove my cover</button>':''}</div></div></div>`}
+function bindCoverCard(b,rerender){const id=b.id;
+ document.querySelectorAll('#eraSeg [data-era]').forEach(el=>el.onclick=()=>{UI.era[id]=el.dataset.era;rerender()});
+ const cf=$('#coverFile');if(cf)cf.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{T(id).cover=await resizeImage(f,700,.82);await save();rerender();toast('Cover set')}catch(err){toast('Could not use that photo')}};
+ const cr=$('#coverRemove');if(cr)cr.onclick=async()=>{delete T(id).cover;tidyTitle(id);await save();rerender();toast('Using stock cover')};
+ const cc=$('#coverFromCopy');if(cc)cc.onclick=()=>{const ps=copiesOf(id).filter(c=>c.photo);const bg=sheet('<h4>Use a copy photo as the cover</h4><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+ps.map(c=>`<img data-cp="${c.id}" src="${c.photo}" style="width:90px;height:130px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid var(--line)">`).join('')+'</div><button class="btn ghost" data-cancel>Cancel</button>');
+  bg.querySelector('[data-cancel]').onclick=()=>bg.remove();bg.querySelectorAll('[data-cp]').forEach(el=>el.onclick=async()=>{T(id).cover='copy:'+el.dataset.cp;await save();bg.remove();rerender();toast('Cover set from your copy photo')})}}
 
 function viewCopy(id,cid){const b=BOOK[id];if(!b)return viewHome();const isNew=cid==='new';const c=isNew?{text:'',format:'',dj:false,first:false,listTo:'',endpapers:'',printing:'',cond:'',djCond:'',price:'',acquired:new Date().toISOString().slice(0,10),source:'',notes:'',photo:''}:S.copies.find(x=>x.id===cid);
  if(!c)return viewBook(id);setHeader((isNew?'Add copy · #':'Edit copy · #')+b.n,true);setTab('home');
@@ -262,11 +323,11 @@ function viewCopy(id,cid){const b=BOOK[id];if(!b)return viewHome();const isNew=c
 function resizeImage(file,max,q){return new Promise((res,rej)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let{width:w,height:h}=img;const r=Math.min(1,max/Math.max(w,h));w=Math.round(w*r);h=Math.round(h*r);const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);res(cv.toDataURL('image/jpeg',q))};img.onerror=rej;img.src=url})}
 
 function viewSearch(){setHeader('Search');setTab('search');UI.showSeries=true;
- $('#app').innerHTML=`<input type="search" id="q" placeholder="Title, number, or your notes…" value="${esc(UI.q)}" autocomplete="off"><div class="chips" style="margin-top:8px">${[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']].map(([k,l])=>`<button class="chip${(UI.sf||'all')===k?' on':''}" data-sf="${k}">${l}</button>`).join('')}</div><div id="res"></div>`;
+ $('#app').innerHTML=`<input type="search" id="q" placeholder="Title, number, or your notes…" value="${esc(UI.q)}" autocomplete="off"><div class="chips" style="margin-top:8px">${[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted'],['top','Top rated']].map(([k,l])=>`<button class="chip${(UI.sf||'all')===k?' on':''}" data-sf="${k}">${l}</button>`).join('')}</div><div id="res"></div>`;
  const q=$('#q');const run=()=>{UI.q=q.value;const t=q.value.trim().toLowerCase();const sf=UI.sf||'all';const out=$('#res');
   if(!t&&sf==='all'){out.innerHTML='<div class="empty">Search all '+Object.keys(BOOK).length+' titles across every series.<br><span class="small">Tip: type a number like “21” or words from your copy notes.</span></div>';return}
   const res=Object.values(BOOK).filter(b=>{if(t){const hay=(b.t+' '+b.n+' '+(b.alt||'')+' '+copiesOf(b.id).map(c=>[c.notes,c.printing,c.source,c.format].join(' ')).join(' ')).toLowerCase();if(!(String(b.n)===t||t.split(/\s+/).every(w=>hay.includes(w))))return false}
-   if(sf==='owned')return ownedOf(b.id);if(sf==='missing')return!ownedOf(b.id);if(sf==='wanted')return!!S.wish[b.id];return true});
+   if(sf==='owned')return ownedOf(b.id);if(sf==='missing')return!ownedOf(b.id);if(sf==='wanted')return!!S.wish[b.id];if(sf==='top')return ratingOf(b.id)>0;return true});if(sf==='top')res.sort((a,c)=>ratingOf(c.id)-ratingOf(a.id));
   out.innerHTML=res.length?`<div class="small muted" style="margin:0 4px 6px">${res.length} result${res.length===1?'':'s'}</div><div class="list">${res.slice(0,300).map(rowHTML).join('')}</div>${res.length>300?'<div class="empty small">Showing first 300. Narrow your search.</div>':''}`:'<div class="empty">No matches.</div>';
   bindRows(out,()=>{const y=window.scrollY;run();window.scrollTo(0,y)})};
  q.oninput=run;$('#app').querySelectorAll('[data-sf]').forEach(el=>el.onclick=()=>{UI.sf=el.dataset.sf;viewSearch()});run();if(!UI.q)setTimeout(()=>q.focus(),50)}
@@ -287,18 +348,18 @@ function download(name,text,type){const blob=new Blob([text],{type});const f=new
  if(navigator.canShare&&navigator.canShare({files:[f]})&&/iPhone|iPad|iPod/.test(navigator.userAgent)){navigator.share({files:[f],title:name}).catch(()=>{});return}
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 const stamp=()=>new Date().toISOString().slice(0,10);
-function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
+function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom,titles:withPhotos?S.titles:Object.fromEntries(Object.entries(S.titles).map(([k,v])=>[k,{...v,cover:v.cover&&v.cover.startsWith('copy:')?v.cover:undefined}]))};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
 const csvCell=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo'];
- const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'']});
+function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo','My rating (title)'];
+ const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'',ratingOf(c.bookId)||'']});
  rows.sort((a,b)=>String(a[0]).localeCompare(String(b[0]))||a[1]-b[1]);download(`hardy-boys-copies-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
-function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Copies owned','Own OT','Own RT','Wanted','Want note'];const rows=[];
- for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;rows.push([s.short,b.n,b.t,b.m?b.m+' '+b.y:b.y,b.ry,copiesOf(id).length,b.ry!=null?(textOwned(id,'Original')?'Yes':''):'',b.ry!=null?(textOwned(id,'Revised')?'Yes':''):'',S.wish[id]?'Yes':'',S.wish[id]?.note||''])}
+function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Copies owned','Own OT','Own RT','Wanted','Want note','My rating','My cover','Open Library edition'];const rows=[];
+ for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;rows.push([s.short,b.n,b.t,b.m?b.m+' '+b.y:b.y,b.ry,copiesOf(id).length,b.ry!=null?(textOwned(id,'Original')?'Yes':''):'',b.ry!=null?(textOwned(id,'Revised')?'Yes':''):'',S.wish[id]?'Yes':'',S.wish[id]?.note||'',ratingOf(id)||'',userCover(id)?'Yes':'',(stockCovers(id)[0]||{}).ed?'https://openlibrary.org/books/'+stockCovers(id)[0].ed:''])}
  download(`hardy-boys-checklist-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
 async function importJSON(file,mode){const txt=await file.text();let d;try{d=JSON.parse(txt)}catch(e){toast('That file isn’t valid JSON');return}
  if(d.app!=='hardyboys-catalog'||!Array.isArray(d.copies)){toast('Not a Hardy Boys catalog backup');return}
- if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[]}
- else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
+ if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[];S.titles=d.titles||{}}
+ else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});for(const[k,v]of Object.entries(d.titles||{}))S.titles[k]={...(S.titles[k]||{}),...v};const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
  await save();indexBooks();toast(`Imported: ${S.copies.length} copies now in catalog`);route()}
 
 function viewMore(){setHeader('Backup & More');setTab('more');
@@ -309,6 +370,7 @@ function viewMore(){setHeader('Backup & More');setTab('more');
  <button class="btn block gold" id="bkFull">Export full backup (JSON, with photos)</button><button class="btn block ghost" id="bkLite">Export backup without photos (smaller)</button>
  <button class="btn block ghost" id="csvCopies">Export my copies (CSV for Excel/Numbers)</button><button class="btn block ghost" id="csvList">Export full checklist (CSV)</button>
  <button class="btn block ghost" id="imp">Import / restore a backup…</button></div>
+ <div class="card"><label style="display:flex;align-items:center;gap:10px;font-weight:600;color:var(--navy2)"><input type="checkbox" id="showCovers" ${S.meta.hideCovers?'':'checked'} style="width:22px;height:22px"> Show cover thumbnails in lists</label><div class="small muted">Stock covers come from Open Library and are saved for offline use after you’ve seen them once. Turn this off to save data.</div></div>
  <div class="card"><div style="font-weight:700;color:var(--navy2)">➕ Add a title not in the checklist</div><div class="small muted">For British editions, graphic novels, oddities, etc.</div><a class="btn block ghost" href="#/addcustom">Add custom title</a></div>
  <div class="card about"><details><summary>About the checklist &amp; sources</summary>
  <p>Preloaded with ${Object.values(BOOK).filter(b=>b.sk!=='custom').length} titles across ${SERIES.length} series. Titles and years were taken from collector references and cross-checked; where a source gives no year, it’s left blank rather than guessed.</p>
@@ -316,16 +378,17 @@ function viewMore(){setHeader('Backup & More');setTab('more');
  <li><a href="https://en.wikipedia.org/wiki/List_of_Hardy_Boys_books" target="_blank" rel="noopener">Wikipedia: List of Hardy Boys books</a>: all series lists, first-publication years, revised-text years, Casefiles months.</li>
  <li><a href="https://www.hardyboysonline.net/content.php?page=series-canon-revisions" target="_blank" rel="noopener">Hardy Boys Online: Revisions (Canon)</a>: revision timeline used to cross-check #1–38.</li>
  <li><a href="https://hardyboys.us/hbos.htm" target="_blank" rel="noopener">The Hardy Boys Unofficial Home Page (hardyboys.us): Original Series</a>: revision history, binding types (red cloth 1927–32, brown 1932–51, tan tweed 1951–62, picture covers from 1962) and endpaper types.</li>
+ <li>Stock cover images: <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a> (Internet Archive) via its <a href="https://openlibrary.org/dev/docs/api/covers" target="_blank" rel="noopener">Covers API</a>. Each book page links to the specific edition shown. Covers were matched at build time by title, number and publisher; titles without a confident match show no stock cover. A stock cover shows one particular edition, and original-text and revised-text covers often differ, so check the label. Era labels come from the edition date in Open Library’s record, so treat them as a guide.</li>
  <li><a href="https://en.wikipedia.org/wiki/Super_Mystery" target="_blank" rel="noopener">Wikipedia: Super Mystery</a>: the 1988–98 SuperMystery list.</li></ul>
  <p class="small muted">Note: the first three books were written in 1926 and released as a “breeder set” in May 1927, so 1927 is shown as their publication year. #7 <i>The Secret of the Caves</i>: revised-text year is 1965 per Wikipedia and hardyboys.us (hardyboysonline.net says 1964).</p>
  <p class="small muted">Not included yet: Papercutz graphic novels, British/Armada editions, Casefiles Collector’s Editions, Clue Book 3-in-1s. Add any of them as custom titles.</p>
  <p class="small muted">Version ${esc(APP_VERSION)}</p></details></div>
  <div class="card"><details><summary style="color:var(--red)">Danger zone</summary><div class="small muted" style="margin-top:6px">Erase everything on this device. Export a backup first.</div><button class="btn block red" id="wipe">Erase all my data</button></details></div>`;
  $('#app').innerHTML=h;
- $('#bkFull').onclick=()=>exportJSON(true);$('#bkLite').onclick=()=>exportJSON(false);$('#csvCopies').onclick=exportCopiesCSV;$('#csvList').onclick=exportChecklistCSV;
+ $('#showCovers').onchange=async e=>{S.meta.hideCovers=!e.target.checked;await save()};$('#bkFull').onclick=()=>exportJSON(true);$('#bkLite').onclick=()=>exportJSON(false);$('#csvCopies').onclick=exportCopiesCSV;$('#csvList').onclick=exportChecklistCSV;
  $('#imp').onclick=()=>{const bg=sheet('<h4>Restore a backup</h4><div class="small muted">Merge adds copies you don’t already have. Replace overwrites everything on this device.</div><button class="btn" data-m="merge">Choose file · Merge</button><button class="btn red" data-m="replace">Choose file · Replace all</button><button class="btn ghost" data-m="">Cancel</button>');
   bg.querySelectorAll('[data-m]').forEach(el=>el.onclick=()=>{bg.remove();if(!el.dataset.m)return;const fi=$('#importFile');fi.value='';fi.onchange=()=>fi.files[0]&&importJSON(fi.files[0],el.dataset.m);fi.click()})};
- $('#wipe').onclick=async()=>{if(!confirm('Erase ALL copies, wishlist and custom titles on this device?'))return;if(prompt('Type ERASE to confirm')!=='ERASE')return;S.copies=[];S.wish={};S.custom=[];await save();indexBooks();toast('All data erased');viewMore()}}
+ $('#wipe').onclick=async()=>{if(!confirm('Erase ALL copies, wishlist and custom titles on this device?'))return;if(prompt('Type ERASE to confirm')!=='ERASE')return;S.copies=[];S.wish={};S.custom=[];S.titles={};await save();indexBooks();toast('All data erased');viewMore()}}
 
 function viewAddCustom(){setHeader('Add custom title',true);setTab('more');
  $('#app').innerHTML=`<div class="card"><label class="f">Title</label><input type="text" id="ct"><label class="f">Series / description</label><input type="text" id="cs" placeholder="e.g., Armada UK paperback, Papercutz graphic novel #3"><label class="f">Year (optional)</label><input type="number" id="cy" inputmode="numeric"><button class="btn block gold" id="cadd">Add title</button></div>`;
