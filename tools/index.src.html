@@ -153,8 +153,13 @@ function seriesStats(s){let own=0,ot=0,rt=0,tx=0,wish=0;for(const b of s.books){
 const pct=(a,b)=>b?Math.round(100*a/b):0;
 // ---------- per-title data: rating + covers ----------
 const T=id=>S.titles[id]||(S.titles[id]={});
-const ratingOf=id=>(S.titles[id]&&S.titles[id].rating)||0;
-function tidyTitle(id){const t=S.titles[id];if(t&&!t.rating&&!t.cover)delete S.titles[id]}
+// #1–38 of the original series get separate Original-text (rOT) and Revised-text (rRT) ratings; everything else a single 'rating'.
+const dual=b=>!!b&&b.sk==='gd'&&b.ry!=null;
+const getR=(id,k)=>(S.titles[id]&&S.titles[id][k])||0;
+const ratingOf=id=>dual(BOOK[id])?Math.max(getR(id,'rOT'),getR(id,'rRT')):getR(id,'rating');
+function tidyTitle(id){const t=S.titles[id];if(t&&!t.rating&&!t.rOT&&!t.rRT&&!t.cover)delete S.titles[id]}
+// Older data/backups stored one 'rating' per title; on #1–38 that becomes the Original-text rating.
+function migrateTitles(titles){let n=0;for(const[id,t]of Object.entries(titles||{})){if(t&&t.rating&&dual(BOOK[id])){if(!t.rOT)t.rOT=t.rating;delete t.rating;n++}}return n}
 const olURL=(cid,sz)=>`https://covers.openlibrary.org/b/id/${cid}-${sz}.jpg`;
 function userCover(id){const t=S.titles[id];if(!t||!t.cover)return'';if(t.cover.startsWith('copy:')){const c=S.copies.find(x=>x.id===t.cover.slice(5));return(c&&c.photo)||''}return t.cover}
 function stockCovers(id){const c=COVERS[id];if(!c)return[];const o=[];if(c.ot)o.push({...c.ot,era:'ot'});if(c.rt)o.push({...c.rt,era:'rt'});if(c.c)o.push({...c.c,era:''});return o}
@@ -184,7 +189,7 @@ function sheet(html){const bg=document.createElement('div');bg.className='sheet-
 // ---------- rows ----------
 function rowHTML(b){const id=b.id,cs=copiesOf(id),own=cs.length>0,w=!!S.wish[id];
  let badges='';if(hasTexts(b)){if(textOwned(id,'Original'))badges+='<span class="b ot">OT</span>';if(textOwned(id,'Revised'))badges+='<span class="b rt">RT</span>'}
- if(cs.some(c=>c.dj))badges+='<span class="b dj">DJ</span>';if(w)badges+='<span class="b w">WANT</span>';const rr=ratingOf(id);if(rr)badges='<span class="b rate">★'+rr+'</span>'+badges;
+ if(cs.some(c=>c.dj))badges+='<span class="b dj">DJ</span>';if(w)badges+='<span class="b w">WANT</span>';if(dual(b)){const o=getR(id,'rOT'),r=getR(id,'rRT');badges=(o?'<span class="b rate">OT★'+o+'</span>':'')+(r?'<span class="b rate">RT★'+r+'</span>':'')+badges}else{const rr=getR(id,'rating');if(rr)badges='<span class="b rate">★'+rr+'</span>'+badges}
  let th='';if(!S.meta.hideCovers){const u=userCover(id),sc=u?null:preferredStock(id);th=u?`<img class="thumb" src="${u}" alt="">`:sc?`<img class="thumb pending" decoding="async" alt="" data-src="${olURL(sc.id,'M')}">`:'<div class="thumb none"></div>'}
  let sub=[];if(b.y)sub.push(b.m?b.m.slice(0,3)+' '+b.y:b.y);if(b.ry)sub.push('Rev. '+b.ry);if(UI.showSeries)sub.unshift(b.sname);
  return `<div class="row${own?' owned':''}" data-id="${id}"><div class="num">${esc(b.n)}</div>${th}<div class="rmain"><div class="rt">${esc(b.t)}</div><div class="rs">${esc(sub.join(' · '))}${badges?'<span class="badges">'+badges+'</span>':''}</div></div>
@@ -231,15 +236,16 @@ function viewHome(){setHeader('Hardy Boys Collection');setTab('home');
 
 function viewSeries(key){const s=allSeries().find(x=>x.key===key);if(!s)return viewHome();setHeader(s.short,true);setTab('home');UI.showSeries=false;
  const f=UI.filter[key]||'all';const st=seriesStats(s);
- const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);fl.splice(4,0,['top','Top rated']);
+ const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);fl.splice(4,0,['top','Top rated']);if(s.books.some(x=>dual(BOOK[key+'-'+x.n])))fl.splice(5,0,['topot','Top rated: Original'],['toprt','Top rated: Revised']);
  let h=`<div class="card"><div class="serif" style="font-weight:700;color:var(--navy)">${esc(s.name)}</div><div class="small muted">${esc(s.publisher)}</div>${s.note?`<div class="small" style="margin-top:6px">${esc(s.note)}</div>`:''}
  <div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div><div class="stat"><span>${st.own} / ${st.total} owned · ${st.total-st.own} missing</span><span>${pct(st.own,st.total)}%</span></div>
  ${st.tx?`<div class="stat"><span>Original text ${st.ot}/${st.tx} · Revised text ${st.rt}/${st.tx}</span></div>`:''}</div>
  <div class="chips">${fl.map(([k,l])=>`<button class="chip${f===k?' on':''}" data-f="${k}">${l}</button>`).join('')}</div>`;
- const books=s.books.map(b=>BOOK[key+'-'+b.n]).filter(b=>{const id=b.id;switch(f){case'owned':return ownedOf(id);case'missing':return!ownedOf(id);case'wanted':return!!S.wish[id];case'needot':return hasTexts(b)&&!textOwned(id,'Original');case'needrt':return hasTexts(b)&&!textOwned(id,'Revised');case'dupes':return copiesOf(id).length>1;case'top':return ratingOf(id)>0;default:return true}});
+ const books=s.books.map(b=>BOOK[key+'-'+b.n]).filter(b=>{const id=b.id;switch(f){case'owned':return ownedOf(id);case'missing':return!ownedOf(id);case'wanted':return!!S.wish[id];case'needot':return hasTexts(b)&&!textOwned(id,'Original');case'needrt':return hasTexts(b)&&!textOwned(id,'Revised');case'dupes':return copiesOf(id).length>1;case'top':return ratingOf(id)>0;case'topot':return getR(id,'rOT')>0;case'toprt':return getR(id,'rRT')>0;default:return true}});
  if(f==='top')books.sort((a,c)=>ratingOf(c.id)-ratingOf(a.id)||a.n-c.n);
+ if(f==='topot'||f==='toprt'){const k=f==='topot'?'rOT':'rRT';books.sort((a,c)=>getR(c.id,k)-getR(a.id,k)||a.n-c.n)}
  if(!books.length)h+='<div class="empty">Nothing here with this filter.</div>';
- else{h+='<div class="list">';let imp='';for(const b of books){if(f!=='top'&&b.imp&&b.imp!==imp){imp=b.imp;h+=`<div class="sub-h">${esc(imp)} editions</div>`}h+=rowHTML(b)}h+='</div>'}
+ else{h+='<div class="list">';let imp='';for(const b of books){if(!f.startsWith('top')&&b.imp&&b.imp!==imp){imp=b.imp;h+=`<div class="sub-h">${esc(imp)} editions</div>`}h+=rowHTML(b)}h+='</div>'}
  if(key==='custom')h+=`<a class="btn block ghost" href="#/addcustom">+ Add another title</a>`;
  const y=window.scrollY;$('#app').innerHTML=h;
  $('#app').querySelectorAll('[data-f]').forEach(el=>el.onclick=()=>{UI.filter[key]=el.dataset.f;viewSeries(key)});
@@ -252,8 +258,7 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  ${b.alt?`<div class="note">${esc(b.alt)}</div>`:''}${b.q?`<div class="note">ℹ︎ ${esc(b.q)}</div>`:''}
  ${hasTexts(b)?`<div class="small" style="margin-top:6px">Own: <span class="b ${textOwned(id,'Original')?'ot':''}">Original text ${textOwned(id,'Original')?'✓':'—'}</span> <span class="b ${textOwned(id,'Revised')?'rt':''}">Revised text ${textOwned(id,'Revised')?'✓':'—'}</span></div>`:''}</div>
  ${coverCardHTML(b)}
- <div class="card" id="rateCard"><div style="display:flex;align-items:center"><div style="flex:1;font-weight:700;color:var(--navy2)">Your rating${ratingOf(id)?`: <span class="serif" style="color:var(--navy)">${ratingOf(id)}/10</span>`:''}</div>${ratingOf(id)?'<button class="btn ghost smallbtn" id="rateClear">Clear</button>':''}</div>
- <div class="small muted">How good is the story? Tap 1–10 (tap again to clear).</div><div class="rates">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-rate="${n}" class="${ratingOf(id)===n?'on':ratingOf(id)>n?'lit':''}" aria-label="Rate ${n}">${n}</button>`).join('')}</div></div>
+ ${rateCardHTML(b)}
  <div class="card"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:700;color:var(--navy2)">${w?'★ On your wishlist':'☆ Not on wishlist'}</div><button class="btn ${w?'ghost':'gold'}" id="wishBtn">${w?'Remove':'Add to wishlist'}</button></div>
  ${w?`<label class="f">What you’re looking for</label><input type="text" id="wishNote" placeholder="e.g., OT with DJ, brown cloth, VG or better" value="${esc(w.note||'')}"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="wishKeep" ${w.keep?'checked':''}> Keep on wishlist after I add a copy (upgrade hunting)</label>`:''}</div>
  <div class="serieshead">Your copies (${cs.length})</div>`;
@@ -268,12 +273,18 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  const wn=$('#wishNote');if(wn)wn.onchange=async()=>{S.wish[id].note=wn.value;await save();toast('Wishlist note saved')};
  const wk=$('#wishKeep');if(wk)wk.onchange=async()=>{S.wish[id].keep=wk.checked;await save()};
  const keepY=()=>{const y=window.scrollY;viewBook(id);window.scrollTo(0,y)};
- $('#app').querySelectorAll('[data-rate]').forEach(el=>el.onclick=async()=>{const n=+el.dataset.rate;if(ratingOf(id)===n)delete T(id).rating;else T(id).rating=n;tidyTitle(id);await save();keepY()});
- const rc=$('#rateClear');if(rc)rc.onclick=async()=>{delete T(id).rating;tidyTitle(id);await save();keepY()};
+ $('#app').querySelectorAll('[data-rate]').forEach(el=>el.onclick=async()=>{const[k,ns]=el.dataset.rate.split(':');const n=+ns;if(getR(id,k)===n)delete T(id)[k];else T(id)[k]=n;tidyTitle(id);await save();keepY()});
+ $('#app').querySelectorAll('[data-clear]').forEach(el=>el.onclick=async()=>{delete T(id)[el.dataset.clear];tidyTitle(id);await save();keepY()});
  bindCoverCard(b,keepY);
  $('#app').querySelectorAll('[data-copy]').forEach(el=>el.onclick=()=>location.hash=`#/c/${id}/${el.dataset.copy}`);
  const dc=$('#delCustom');if(dc)dc.onclick=async()=>{if(!confirm('Delete this custom title and its copies?'))return;S.custom=S.custom.filter(x=>'custom-'+x.n!==id);S.copies=S.copies.filter(c=>c.bookId!==id);delete S.wish[id];await save();indexBooks();location.hash='#/'}}
 
+function rateRowHTML(id,k,label,color){const v=getR(id,k);
+ return `<div class="raterow" data-row="${k}" style="${color?'border-left:4px solid '+color+';padding-left:8px;margin-top:10px':''}"><div style="display:flex;align-items:center;min-height:34px"><div style="flex:1;font-weight:700;color:var(--navy2)">${label}${v?`: <span class="serif" style="color:var(--navy)">${v}/10</span>`:''}</div>${v?`<button class="btn ghost smallbtn" data-clear="${k}">Clear</button>`:''}</div>
+ <div class="rates">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-rate="${k}:${n}" class="${v===n?'on':v>n?'lit':''}" aria-label="${label} ${n}">${n}</button>`).join('')}</div></div>`}
+function rateCardHTML(b){const id=b.id;
+ if(dual(b))return`<div class="card" id="rateCard"><div style="font-weight:700;color:var(--navy2)">Your ratings</div><div class="small muted">Rate each text separately. Tap 1–10 (tap again to clear).</div>${rateRowHTML(id,'rOT','Original text','#7a2e1f')}${rateRowHTML(id,'rRT','Revised text','#1f4e7a')}</div>`;
+ return`<div class="card" id="rateCard">${rateRowHTML(id,'rating','Your rating','')}<div class="small muted" style="margin-top:4px">How good is the story? Tap 1–10 (tap again to clear).</div></div>`}
 function coverCardHTML(b){const id=b.id,u=userCover(id),st=stockCovers(id);UI.era=UI.era||{};
  let cur=u?null:(st.find(x=>x.era===UI.era[id])||preferredStock(id));
  const img=u?`<img class="bigcover" src="${u}" alt="Your cover photo">`:cur?`<img class="bigcover" id="bigcover" alt="Stock cover" src="${olURL(cur.id,'L')}" onerror="coverRetry(this)">`:'<div class="nocover">No stock cover found.<br>Add your own photo.</div>';
@@ -350,15 +361,15 @@ function download(name,text,type){const blob=new Blob([text],{type});const f=new
 const stamp=()=>new Date().toISOString().slice(0,10);
 function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom,titles:withPhotos?S.titles:Object.fromEntries(Object.entries(S.titles).map(([k,v])=>[k,{...v,cover:v.cover&&v.cover.startsWith('copy:')?v.cover:undefined}]))};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
 const csvCell=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo','My rating (title)'];
- const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'',ratingOf(c.bookId)||'']});
+function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo','My rating','My rating (Original text)','My rating (Revised text)'];
+ const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'',getR(c.bookId,'rating')||'',getR(c.bookId,'rOT')||'',getR(c.bookId,'rRT')||'']});
  rows.sort((a,b)=>String(a[0]).localeCompare(String(b[0]))||a[1]-b[1]);download(`hardy-boys-copies-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
-function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Copies owned','Own OT','Own RT','Wanted','Want note','My rating','My cover','Open Library edition'];const rows=[];
- for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;rows.push([s.short,b.n,b.t,b.m?b.m+' '+b.y:b.y,b.ry,copiesOf(id).length,b.ry!=null?(textOwned(id,'Original')?'Yes':''):'',b.ry!=null?(textOwned(id,'Revised')?'Yes':''):'',S.wish[id]?'Yes':'',S.wish[id]?.note||'',ratingOf(id)||'',userCover(id)?'Yes':'',(stockCovers(id)[0]||{}).ed?'https://openlibrary.org/books/'+stockCovers(id)[0].ed:''])}
+function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Copies owned','Own OT','Own RT','Wanted','Want note','My rating','My rating (Original text)','My rating (Revised text)','My cover','Open Library edition'];const rows=[];
+ for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;rows.push([s.short,b.n,b.t,b.m?b.m+' '+b.y:b.y,b.ry,copiesOf(id).length,b.ry!=null?(textOwned(id,'Original')?'Yes':''):'',b.ry!=null?(textOwned(id,'Revised')?'Yes':''):'',S.wish[id]?'Yes':'',S.wish[id]?.note||'',getR(id,'rating')||'',getR(id,'rOT')||'',getR(id,'rRT')||'',userCover(id)?'Yes':'',(stockCovers(id)[0]||{}).ed?'https://openlibrary.org/books/'+stockCovers(id)[0].ed:''])}
  download(`hardy-boys-checklist-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
 async function importJSON(file,mode){const txt=await file.text();let d;try{d=JSON.parse(txt)}catch(e){toast('That file isn’t valid JSON');return}
  if(d.app!=='hardyboys-catalog'||!Array.isArray(d.copies)){toast('Not a Hardy Boys catalog backup');return}
- if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[];S.titles=d.titles||{}}
+ migrateTitles(d.titles);if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[];S.titles=d.titles||{}}
  else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});for(const[k,v]of Object.entries(d.titles||{}))S.titles[k]={...(S.titles[k]||{}),...v};const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
  await save();indexBooks();toast(`Imported: ${S.copies.length} copies now in catalog`);route()}
 
@@ -400,7 +411,7 @@ function route(){const h=location.hash.replace(/^#\/?/,'');const p=h.split('/');
  else if(p[0]==='search')viewSearch();else if(p[0]==='wish')viewWish();else if(p[0]==='more')viewMore();else if(p[0]==='addcustom')viewAddCustom();else viewHome()}
 let READY=false;window.addEventListener('hashchange',()=>{if(READY)route()});
 window.addEventListener('scroll',()=>{if(!location.hash||location.hash==='#/')UI.homeScroll=window.scrollY},{passive:true});
-(async()=>{await load();indexBooks();READY=true;route();
+(async()=>{await load();indexBooks();if(migrateTitles(S.titles))await save();READY=true;route();
  if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
 </script>
 </body>
