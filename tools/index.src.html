@@ -75,8 +75,15 @@ label.f{display:block;margin:10px 0 4px;font-size:13px;font-weight:600;color:var
 .muted{color:var(--muted)}.small{font-size:13px}
 .note{background:#fff8e1;border-left:3px solid var(--gold);padding:8px 10px;border-radius:6px;font-size:14px;margin:8px 0}
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
-#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + var(--safe-b));background:#222;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;display:none;z-index:50;gap:12px;align-items:center;max-width:92vw}
-#toast button{background:none;border:0;color:var(--gold2);font-weight:700;font-size:14px;cursor:pointer}
+/* Toast lives inside the sticky header, in place of the title, so it never sits over list rows, the Back button or the tab bar. */
+header{min-height:calc(var(--safe-t) + 54px)}
+#toast{flex:1;min-width:0;display:none;align-items:center;gap:6px;background:var(--gold);color:var(--navy);border-radius:10px;padding:4px 4px 4px 10px;min-height:38px;animation:tin .18s ease-out}
+#toast.show{display:flex}
+#toastMsg{flex:1;min-width:0;font:600 13.5px/1.25 -apple-system,sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+#toast button{border:0;cursor:pointer;font:700 14px/1 -apple-system,sans-serif;min-height:34px;padding:0 10px;border-radius:8px}
+#toastAct{background:var(--navy);color:var(--gold2)}
+#toastX{background:transparent;color:var(--navy);font-size:18px!important;min-width:34px}
+@keyframes tin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + var(--safe-b))}
 .sheet h4{margin:0 0 4px;font:700 17px Georgia,serif;color:var(--navy)}
@@ -89,7 +96,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 </style>
 </head>
 <body>
-<header><button class="back" id="backBtn" hidden aria-label="Back">‹ Back</button><div class="hbadge" id="hb">HB</div><h1 id="title">Hardy Boys Collection</h1></header>
+<header><button class="back" id="backBtn" hidden aria-label="Back">‹ Back</button><div class="hbadge" id="hb">HB</div><h1 id="title">Hardy Boys Collection</h1><div id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastAct" type="button"></button><button id="toastX" type="button" aria-label="Dismiss">×</button></div></header>
 <main id="app"><div class="empty">Loading…</div></main>
 <nav class="tabs">
  <a href="#/" data-t="home"><span class="ic">📚</span>Shelf</a>
@@ -97,7 +104,6 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
  <a href="#/wish" data-t="wish"><span class="ic">★</span>Wishlist</a>
  <a href="#/more" data-t="more"><span class="ic">⚙︎</span>Backup &amp; More</a>
 </nav>
-<div id="toast"><span id="toastMsg"></span><button id="toastAct"></button></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script>
 const SERIES = /*DATA*/;
@@ -133,15 +139,17 @@ function seriesStats(s){let own=0,ot=0,rt=0,tx=0,wish=0;for(const b of s.books){
 const pct=(a,b)=>b?Math.round(100*a/b):0;
 
 const FORMATS=[
- ['Grosset & Dunlap (canon)',['Red cloth (1927–32)','Brown cloth (1932–51)','Tan tweed (1951–62)','Picture cover / “applecover” (1962+)','G&D flashlight picture cover reprint (2005–13)','G&D other / book club']],
+ ['Grosset & Dunlap (canon)',['Red cloth (1927–32)','Red spine','Brown cloth (1932–51)','Tan tweed (1951–62)','Picture cover / “applecover” (1962+)','G&D flashlight picture cover reprint (2005–13)','G&D other / book club']],
  ['Simon & Schuster',['Wanderer paperback','Wanderer hardcover','Minstrel digest paperback','Aladdin digest paperback','Archway mass-market paperback','Aladdin paperback','Hardcover (S&S / Aladdin)','Library binding']],
  ['Other',['Applewood facsimile','British / foreign edition','Omnibus / 2-in-1 / 3-in-1','Other']]];
 const ENDPAPERS=['','Brown Gretta (1932)','Orange Gretta (1932–58)','Brown multi-scene (1959–72)','White multi-scene (1961–79)','Cameo (1979–87)','Plain / blank','Other'];
 const CONDS=['','Fine','Near Fine','Very Good','Good','Fair','Poor'];
 
 // ---------- UI plumbing ----------
-let toastTimer;function toast(msg,actLabel,act){const t=$('#toast');$('#toastMsg').textContent=msg;const b=$('#toastAct');b.textContent=actLabel||'';b.style.display=actLabel?'':'none';b.onclick=()=>{t.style.display='none';act&&act()};t.style.display='flex';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',4000)}
-function setHeader(title,back){$('#title').textContent=title;$('#backBtn').hidden=!back;$('#hb').hidden=!!back}
+let toastTimer;function hideToast(){clearTimeout(toastTimer);$('#toast').classList.remove('show');$('#title').hidden=false}
+function toast(msg,actLabel,act){const t=$('#toast');$('#toastMsg').textContent=msg;const b=$('#toastAct');b.textContent=actLabel||'';b.style.display=actLabel?'':'none';
+ b.onclick=()=>{hideToast();act&&act()};$('#toastX').onclick=hideToast;$('#toastMsg').onclick=hideToast;$('#title').hidden=true;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,4000)}
+function setHeader(title,back){$('#title').textContent=title;$('#title').hidden=$('#toast').classList.contains('show');$('#backBtn').hidden=!back;$('#hb').hidden=!!back}
 $('#backBtn').onclick=()=>history.length>1?history.back():(location.hash='#/');
 function setTab(t){document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===t))}
 const UI={filter:{},q:''};
@@ -162,9 +170,13 @@ function bindRows(root,rerender){root.querySelectorAll('[data-own]').forEach(el=
 async function addCopy(id,extra){const b=BOOK[id];const c={id:uid(),bookId:id,text:hasTexts(b)?'':'N/A',format:'',dj:false,first:false,listTo:'',endpapers:'',printing:'',cond:'',djCond:'',price:'',acquired:new Date().toISOString().slice(0,10),source:'',notes:'',photo:'',created:Date.now(),...extra};
  S.copies.push(c);let unwished=false;if(S.wish[id]&&!S.wish[id].keep){delete S.wish[id];unwished=true}await save();return {c,unwished}}
 async function quickOwn(id,rerender){const b=BOOK[id];const n=copiesOf(id).length;
- const go=async(extra)=>{const {c}=await addCopy(id,extra);rerender();toast(`Added ${n?'another ':''}copy of #${b.n}`+(extra.text&&extra.text!=='N/A'?` (${extra.text} text)`:''),'Undo',async()=>{S.copies=S.copies.filter(x=>x.id!==c.id);await save();rerender()})};
+ const go=async(extra)=>{const added=[];
+  if(extra.text==='Both'){added.push((await addCopy(id,{text:'Original'})).c,(await addCopy(id,{text:'Revised'})).c)}else added.push((await addCopy(id,extra)).c);
+  rerender();const ids=new Set(added.map(c=>c.id));
+  const msg=extra.text==='Both'?`Added 2 copies of #${b.n} (Original + Revised)`:`Added ${n?'another ':''}copy of #${b.n}`+(extra.text&&extra.text!=='N/A'?` (${extra.text} text)`:'');
+  toast(msg,'Undo',async()=>{S.copies=S.copies.filter(x=>!ids.has(x.id));await save();rerender()})};
  if(hasTexts(b)){const bg=sheet(`<h4>#${esc(b.n)} ${esc(b.t)}</h4><div class="muted small">Which text is this copy?</div>
-  <button class="btn" data-x="Original" style="background:#7a2e1f">Original text (${b.y})</button><button class="btn" data-x="Revised" style="background:#1f4e7a">Revised text (${b.ry}+)</button><button class="btn ghost" data-x="">Not sure yet</button>`);
+  <button class="btn" data-x="Original" style="background:#7a2e1f">Original text (${b.y})</button><button class="btn" data-x="Revised" style="background:#1f4e7a">Revised text (${b.ry}+)</button><button class="btn gold" data-x="Both">Both: one of each</button><button class="btn ghost" data-x="">Not sure yet</button>`);
   bg.querySelectorAll('[data-x]').forEach(el=>el.onclick=()=>{bg.remove();go({text:el.dataset.x})})}
  else go({})}
 async function toggleWish(id){if(S.wish[id])delete S.wish[id];else S.wish[id]={added:Date.now(),note:''};await save()}
@@ -323,9 +335,9 @@ function viewAddCustom(){setHeader('Add custom title',true);setTab('more');
 function route(){const h=location.hash.replace(/^#\/?/,'');const p=h.split('/');
  if(p[0]==='s')viewSeries(p[1]);else if(p[0]==='b')viewBook(decodeURIComponent(p[1]));else if(p[0]==='c')viewCopy(decodeURIComponent(p[1]),p[2]);
  else if(p[0]==='search')viewSearch();else if(p[0]==='wish')viewWish();else if(p[0]==='more')viewMore();else if(p[0]==='addcustom')viewAddCustom();else viewHome()}
-window.addEventListener('hashchange',()=>{if(!location.hash||location.hash==='#/'){}route()});
+let READY=false;window.addEventListener('hashchange',()=>{if(READY)route()});
 window.addEventListener('scroll',()=>{if(!location.hash||location.hash==='#/')UI.homeScroll=window.scrollY},{passive:true});
-(async()=>{await load();indexBooks();route();
+(async()=>{await load();indexBooks();READY=true;route();
  if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
 </script>
 </body>
