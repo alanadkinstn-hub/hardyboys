@@ -114,6 +114,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <nav class="tabs">
  <a href="#/" data-t="home"><span class="ic">📚</span>Shelf</a>
  <a href="#/search" data-t="search"><span class="ic">🔍</span>Search</a>
+ <a href="#/ratings" data-t="ratings"><span class="ic">🏆</span>Ratings</a>
  <a href="#/wish" data-t="wish"><span class="ic">★</span>Wishlist</a>
  <a href="#/more" data-t="more"><span class="ic">⚙︎</span>Backup &amp; More</a>
 </nav>
@@ -229,6 +230,8 @@ function viewHome(){setHeader('Hardy Boys Collection');setTab('home');
  let h=`<div class="hero"><div class="serif" style="font-size:15px;opacity:.9">Bayport Detective Agency · Case Files</div><div class="row" style="margin-top:6px">
  <div><div class="big">${owned}</div><div class="lbl">titles owned</div></div><div><div class="big">${S.copies.length}</div><div class="lbl">copies</div></div><div><div class="big">${Object.keys(S.wish).length}</div><div class="lbl">wanted</div></div>${spent?`<div><div class="big">$${spent.toFixed(0)}</div><div class="lbl">invested</div></div>`:''}</div></div>`;
  const last=S.meta.lastBackup;if(S.copies.length>=5&&(!last||Date.now()-last>30*864e5))h+=`<div class="banner">💾 ${last?'Your last backup was over a month ago.':'You haven’t backed up yet.'} <a href="#/more">Export a backup</a> so your catalog is safe.</div>`;
+ const nRated=Object.keys(BOOK).filter(id=>ratingOf(id)>0).length;
+ h+=`<a class="card" id="ratingsBtn" href="#/ratings" style="text-decoration:none;color:inherit;background:var(--gold);border:2px solid var(--navy);display:flex;align-items:center;gap:12px"><span style="font-size:30px">🏆</span><span style="flex:1"><span class="serif" style="display:block;font-weight:700;font-size:18px;color:var(--navy)">My Ratings</span><span class="small" style="color:var(--navy)">${nRated?nRated+' rated book'+(nRated===1?'':'s')+', ranked best first':'Rate books to build your personal ranking'}</span></span><span style="font-size:22px;color:var(--navy)">›</span></a>`;
  let grp='';for(const s of ser){if(s.group!==grp){grp=s.group;h+=`<div class="serieshead">${esc({Main:'Hardy Boys Mystery Stories',Spinoffs:'Spinoffs & Crossovers',Modern:'Modern Series','Younger readers':'Younger Readers',Mine:'Your Additions'}[grp]||grp)}</div>`}
   const st=seriesStats(s);h+=`<a class="card scard" href="#/s/${s.key}"><h3>${esc(s.short)}</h3><div class="sub">${esc(s.name)} · ${esc(s.publisher)}</div><div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div>
   <div class="stat"><span>${st.own} of ${st.total} owned${st.tx?` · OT ${st.ot}/${st.tx} · RT ${st.rt}/${st.tx}`:''}</span><span>${pct(st.own,st.total)}%</span></div></a>`}
@@ -343,6 +346,25 @@ function viewSearch(){setHeader('Search');setTab('search');UI.showSeries=true;
   bindRows(out,()=>{const y=window.scrollY;run();window.scrollTo(0,y)})};
  q.oninput=run;$('#app').querySelectorAll('[data-sf]').forEach(el=>el.onclick=()=>{UI.sf=el.dataset.sf;viewSearch()});run();if(!UI.q)setTimeout(()=>q.focus(),50)}
 
+// ---------- My Ratings ----------
+function ratingScore(id,basis){const b=BOOK[id];if(basis==='ot')return dual(b)?getR(id,'rOT'):0;if(basis==='rt')return dual(b)?getR(id,'rRT'):0;return ratingOf(id)}
+function viewRatings(){setHeader('My Ratings');setTab('ratings');UI.showSeries=true;
+ const basis=UI.rBasis||'best',sf=UI.rSeries||'all';const ser=allSeries();const order=Object.fromEntries(ser.map((s,i)=>[s.key,i]));
+ const items=Object.values(BOOK).filter(b=>(sf==='all'||b.sk===sf)&&ratingScore(b.id,basis)>0)
+  .sort((a,c)=>ratingScore(c.id,basis)-ratingScore(a.id,basis)||order[a.sk]-order[c.sk]||a.n-c.n);
+ const anyRated=Object.keys(BOOK).some(id=>ratingOf(id)>0);
+ let h=`<div class="chips" id="basisChips">${[['best','Best of either'],['ot','Original text'],['rt','Revised text']].map(([k,l])=>`<button class="chip${basis===k?' on':''}" data-basis="${k}">${l}</button>`).join('')}</div>
+ <select id="rSeries" aria-label="Series filter" style="margin-bottom:10px"><option value="all">All series</option>${ser.map(s=>`<option value="${s.key}"${sf===s.key?' selected':''}>${esc(s.short)}</option>`).join('')}</select>
+ ${basis!=='best'?'<div class="small muted" style="margin:-4px 4px 8px">Original/Revised ratings apply to #1–38 of the original series.</div>':''}`;
+ if(!anyRated)h+=`<div class="card empty" id="ratingsEmpty"><div style="font-size:34px">🏆</div><b>No ratings yet</b><br>Open any book and tap a number from 1 to 10 under <b>Your rating</b>. On #1–38 of the original series you can rate the Original text and the Revised text separately.<br><br>Your rated books will be ranked here, best first.<br><a class="btn gold" href="#/s/gd" style="margin-top:12px">Browse the original series</a></div>`;
+ else if(!items.length)h+='<div class="empty" id="ratingsEmpty">No rated books match this filter.</div>';
+ else{h+=`<div class="small muted" style="margin:0 4px 8px">${items.length} rated · highest first</div><div class="list">`;let cur=0;
+  for(const b of items){const sc=ratingScore(b.id,basis);if(sc!==cur){cur=sc;const n=items.filter(x=>ratingScore(x.id,basis)===sc).length;h+=`<div class="sub-h" data-score="${sc}">★ ${sc} · ${n} book${n===1?'':'s'}</div>`}h+=rowHTML(b)}h+='</div>'}
+ $('#app').innerHTML=h;
+ $('#app').querySelectorAll('[data-basis]').forEach(el=>el.onclick=()=>{UI.rBasis=el.dataset.basis;viewRatings()});
+ $('#rSeries').onchange=e=>{UI.rSeries=e.target.value;viewRatings()};
+ bindRows($('#app'),()=>{const y=window.scrollY;viewRatings();window.scrollTo(0,y)})}
+
 function wishText(){const lines=['Hardy Boys want list'];let cur='';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n,w=S.wish[id];if(!w)continue;if(cur!==s.key){cur=s.key;lines.push('',s.short)}lines.push(`#${b.n} ${b.t}${w.note?' — '+w.note:''}`)}return lines.join('\n')}
 function viewWish(){setHeader('Wishlist');setTab('wish');UI.showSeries=true;const ids=Object.keys(S.wish).filter(id=>BOOK[id]);
  let h=ids.length?`<div class="small muted" style="margin:0 4px 8px">${ids.length} wanted · tap ☆ on any title to add. Notes show what you’re hunting for.</div>`:'<div class="empty">Your wishlist is empty.<br>Tap ☆ next to any title to add it.</div>';
@@ -408,7 +430,7 @@ function viewAddCustom(){setHeader('Add custom title',true);setTab('more');
 // ---------- router ----------
 function route(){const h=location.hash.replace(/^#\/?/,'');const p=h.split('/');
  if(p[0]==='s')viewSeries(p[1]);else if(p[0]==='b')viewBook(decodeURIComponent(p[1]));else if(p[0]==='c')viewCopy(decodeURIComponent(p[1]),p[2]);
- else if(p[0]==='search')viewSearch();else if(p[0]==='wish')viewWish();else if(p[0]==='more')viewMore();else if(p[0]==='addcustom')viewAddCustom();else viewHome()}
+ else if(p[0]==='search')viewSearch();else if(p[0]==='wish')viewWish();else if(p[0]==='ratings')viewRatings();else if(p[0]==='more')viewMore();else if(p[0]==='addcustom')viewAddCustom();else viewHome()}
 let READY=false;window.addEventListener('hashchange',()=>{if(READY)route()});
 window.addEventListener('scroll',()=>{if(!location.hash||location.hash==='#/')UI.homeScroll=window.scrollY},{passive:true});
 (async()=>{await load();indexBooks();if(migrateTitles(S.titles))await save();READY=true;route();
