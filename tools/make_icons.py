@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-NAVY=(20,33,61); GOLD=(201,162,39); CREAM=(246,239,220)
+NAVY=(26,79,120); GOLD=(201,162,39); CREAM=(246,239,220)
 font_path='/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf'
 def icon(size, path, maskable=False):
     S=size*4

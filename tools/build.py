@@ -4,12 +4,12 @@ data = json.loads((root/'tools/data.json').read_text())
 src = (root/'tools/index.src.html').read_text()
 djs = json.dumps(data, ensure_ascii=False, separators=(',',':')).replace('</', '<\\/')
 covers = json.loads((root/'tools/covers.json').read_text()) if (root/'tools/covers.json').exists() else {}
-ver = '1.7-' + hashlib.sha1((src+djs+json.dumps(covers)).encode()).hexdigest()[:8]
+ver = '1.8-' + hashlib.sha1((src+djs+json.dumps(covers)).encode()).hexdigest()[:8]
 html = src.replace('/*COVERS*/', json.dumps(covers, separators=(',',':'))).replace('/*DATA*/', djs).replace('/*VERSION*/', ver)
 (root/'index.html').write_text(html)
 (root/'manifest.webmanifest').write_text(json.dumps({
  "name":"Hardy Boys Collection","short_name":"Hardy Shelf","description":"Catalog your Hardy Boys book collection: originals, revised texts, digests, Casefiles and more.",
- "start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#f7f1e1","theme_color":"#14213d",
+ "start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#f7f1e1","theme_color":"#1a4f78",
  "icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"},{"src":"icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]}, indent=1))
 (root/'sw.js').write_text(f"""// Hardy Boys Collection service worker (offline app shell)
 const CACHE='hb-{ver}';

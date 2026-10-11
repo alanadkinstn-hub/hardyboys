@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hardy Boys Collection</title>
-<meta name="theme-color" content="#14213d">
+<meta name="theme-color" content="#1a4f78">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
-:root{--navy:#14213d;--navy2:#1f3160;--gold:#c9a227;--gold2:#e6c65c;--cream:#f7f1e1;--paper:#fffdf7;--ink:#1b1b1b;--muted:#6b6b6b;--line:#e4dcc6;--ok:#2e7d4f;--red:#a33;
+:root{--navy:#1a4f78;--navy2:#2b6fa3;--spine:#3a8cc4;--gold:#c9a227;--gold2:#e6c65c;--cream:#f7f1e1;--paper:#fffdf7;--ink:#1b1b1b;--muted:#6b6b6b;--line:#e4dcc6;--ok:#2e7d4f;--red:#a33;
 --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
 [hidden]{display:none!important}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -24,7 +24,7 @@ header h1{font:700 19px/1.2 Georgia,serif;margin:0;flex:1;letter-spacing:.3px;wh
 header .back{background:none;border:0;color:var(--gold2);font-size:17px;padding:4px 6px 4px 0;cursor:pointer}
 header .hbadge{width:30px;height:30px;border:2px solid var(--gold);display:grid;place-items:center;font:700 13px Georgia,serif;color:var(--cream)}
 main{padding:12px 12px calc(84px + var(--safe-b));max-width:760px;margin:0 auto}
-nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--navy);display:flex;border-top:2px solid var(--gold);padding-bottom:var(--safe-b)}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--navy);display:flex;border-top:2px solid var(--gold);box-shadow:0 -3px 0 var(--spine);padding-bottom:var(--safe-b)}
 nav.tabs a{flex:1;text-align:center;color:#c8cfe0;text-decoration:none;font-size:11px;padding:8px 0 7px}
 nav.tabs a .ic{display:block;font-size:20px;line-height:24px}
 nav.tabs a.on{color:var(--gold2)}
@@ -36,7 +36,7 @@ nav.tabs a.on{color:var(--gold2)}
 .bar{height:8px;background:#ece4cc;border-radius:5px;overflow:hidden;margin-top:8px}
 .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2))}
 .stat{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px}
-.hero{background:var(--navy);color:var(--cream);border-radius:14px;padding:14px 16px;margin-bottom:12px;border:2px solid var(--gold)}
+.hero{background:linear-gradient(160deg,var(--navy) 55%,var(--spine));color:var(--cream);border-radius:14px;padding:14px 16px;margin-bottom:12px;border:2px solid var(--gold)}
 .hero .big{font:700 28px Georgia,serif;color:var(--gold2)}
 .hero .row{display:flex;gap:18px;flex-wrap:wrap}
 .hero .lbl{font-size:12px;opacity:.8}
