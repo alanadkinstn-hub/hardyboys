@@ -197,3 +197,26 @@ sp = next(s for s in series if s['key']=='specials')
 sp['books'][0]['ry'] = 1972; sp['books'][0]['q'] = 'Revised 1972 per hardyboys.us revision history.'
 json.dump(series, open('/workspace/hardyboys/tools/data.json','w'), ensure_ascii=False, separators=(',',':'))
 print('total titles', sum(len(s['books']) for s in series))
+# --- ghostwriters (v1.7): Wikipedia "List of Hardy Boys books" G&D table, cross-checked vs hardyboys.us (src/hbos.html author tables)
+HA = 'Harriet Adams'
+GW = {1:'Leslie McFarlane',2:'Leslie McFarlane',3:'Leslie McFarlane',4:'Leslie McFarlane',5:'Leslie McFarlane',6:'Leslie McFarlane',7:'Leslie McFarlane',8:'Leslie McFarlane',9:'Leslie McFarlane',10:'Leslie McFarlane',11:'Leslie McFarlane',12:'Leslie McFarlane',13:'Leslie McFarlane',14:'Leslie McFarlane',15:'Leslie McFarlane',16:'Leslie McFarlane',
+ 17:'John Button',18:'John Button',19:'John Button',20:'John Button',21:'John Button',22:'Leslie McFarlane',23:'Leslie McFarlane',24:'Leslie McFarlane',25:HA,26:'Amy McFarlane',27:'George Waller, Jr.',28:'Andrew E. Svenson',29:'Andrew E. Svenson',30:'Andrew E. Svenson',
+ 31:'William Hallstead and William Dougherty',32:'Richard Cohen',33:'William Dougherty',34:'Charles S. Strong',35:'John Almquist',36:'John Almquist',37:'James Duncan Lawrence',38:'James Duncan Lawrence',39:'James Duncan Lawrence',40:'James Buechler',41:'James Buechler',42:'Alistair Hunter',43:HA,44:'David Grambs',45:'Andrew E. Svenson',
+ 46:'Tom Mulvey',47:'Jerrold Mundis',48:'Andrew E. Svenson',49:'Vincent Buranelli',50:'Andrew E. Svenson',51:'Vincent Buranelli',52:'Andrew E. Svenson',53:'Andrew E. Svenson',54:'Andrew E. Svenson',55:'Vincent Buranelli',56:'Vincent Buranelli',57:'Vincent Buranelli',58:'James Duncan Lawrence'}
+RB = {1:HA,2:HA,3:'Alistair Hunter',4:'James Buechler',5:'Alistair Hunter',6:'David Grambs',7:'Andrew E. Svenson',8:'Anne Shultes, Andrew E. Svenson and Harriet Adams',9:'Tom Mulvey',10:'Tom Mulvey',11:'James Buechler',12:'David Grambs',13:'Tom Mulvey',14:'James Buechler',15:'Tom Mulvey',16:'James Duncan Lawrence',17:'James Duncan Lawrence',18:'Tom Mulvey',19:'James Duncan Lawrence',
+ 20:'Vincent Buranelli',21:'Richard Deming',22:'Vincent Buranelli',23:'Andrew E. Svenson',24:'David Grambs',25:'Priscilla Baker-Carr',26:'Priscilla Baker-Carr',27:'David Grambs',28:'Priscilla Baker-Carr',29:'David Grambs, June Dunn and Priscilla Baker-Carr',30:'Priscilla Baker-Carr',31:'Priscilla Baker-Carr',32:'Priscilla Baker-Carr',33:'Priscilla Baker-Carr',34:'Priscilla Baker-Carr',35:'Priscilla Baker-Carr',36:'Priscilla Baker-Carr',37:'Priscilla Baker-Carr',38:'Priscilla Baker-Carr'}
+GQ = {12:"Wikipedia notes McFarlane's credit for this title is disputed (style differences).",
+ 17:'Wikipedia credits Leslie McFarlane and John Button (McFarlane credit disputed); hardyboys.us credits John Button.',
+ 27:'Wikipedia credits George Waller, Jr. and Harriet Adams; hardyboys.us credits George Waller Jr.',
+ 30:'Wikipedia credits Andrew E. Svenson and Harriet Adams; hardyboys.us credits Andrew Svenson.',
+ 31:'hardyboys.us credits Hallstead, Adams and Dougherty.',
+ 46:'Wikipedia credits Tom Mulvey, Harriet Adams and Grace Grote; hardyboys.us credits Tom Mulvey.',
+ 24:'Revised text: Wikipedia credits David Grambs; hardyboys.us credits Priscilla Baker-Carr.',
+ 29:'Revised text: hardyboys.us credits Grambs and Dunn.'}
+d = json.load(open('/workspace/hardyboys/tools/data.json'))
+for b in d[0]['books']:
+    n = b['n']; b['gw'] = GW[n]
+    if n in RB: b['rb'] = RB[n]
+    if n in GQ: b['gq'] = GQ[n]
+json.dump(d, open('/workspace/hardyboys/tools/data.json','w'), ensure_ascii=False, separators=(',',':'))
+print('ghostwriters added', sum(1 for b in d[0]['books'] if b.get('gw')))
