@@ -170,11 +170,11 @@ function tidyTitle(id){const t=S.titles[id];if(t&&!t.rating&&!t.rOT&&!t.rRT&&!t.
 function migrateTitles(titles){let n=0;for(const[id,t]of Object.entries(titles||{})){if(t&&t.rating&&dual(BOOK[id])){if(!t.rOT)t.rOT=t.rating;delete t.rating;n++}}return n}
 const olURL=(cid,sz)=>`https://covers.openlibrary.org/b/id/${cid}-${sz}.jpg`;
 function userCover(id){const t=S.titles[id];if(!t||!t.cover)return'';if(t.cover.startsWith('copy:')){const c=S.copies.find(x=>x.id===t.cover.slice(5));return(c&&c.photo)||''}return t.cover}
-function stockCovers(id){const c=COVERS[id];if(!c)return[];const o=[];if(c.ot)o.push({...c.ot,era:'ot'});if(c.rt)o.push({...c.rt,era:'rt'});if(c.c)o.push({...c.c,era:''});return o}
-function preferredStock(id){const st=stockCovers(id);if(st.length<2)return st[0];const ot=textOwned(id,'Original'),rt=textOwned(id,'Revised');return st.find(x=>x.era===(rt&&!ot?'rt':'ot'))||st[0]}
+function stockCovers(id){const c=COVERS[id];if(!c)return[];const o=[];if(c.ot)o.push({...c.ot,era:'ot'});if(c.rt&&!(c.pc&&c.pc.id===c.rt.id))o.push({...c.rt,era:'rt'});if(c.pc)o.push({...c.pc,era:'pc'});if(c.c&&!(c.pc&&c.pc.id===c.c.id))o.push({...c.c,era:''});return o}
+function preferredStock(id,ctx){const st=stockCovers(id);if(!st.length)return;if(ctx===undefined)ctx=UI.coverCtx||'';const f=e=>st.find(x=>x.era===e);if(ctx==='rt')return f('pc')||f('rt')||st[0];if(ctx==='ot')return f('ot')||st[0];const b=BOOK[id];if(b&&b.sk==='gd'&&!dual(b))return f('pc')||st[0];const ot=textOwned(id,'Original'),rt=textOwned(id,'Revised');return(rt&&!ot?(f('pc')||f('rt')):f('ot'))||st[0]}
 function eraLabel(b,c){const ed=`${c.pub||'Unknown publisher'}${c.yr?' edition, '+c.yr:' edition'}`;
  if(c.era==='ot')return c.fac?`Applewood facsimile${c.yr?' ('+c.yr+')':''}: reproduces original-text era art`:`Original-text era cover · ${ed}`;
- if(c.era==='rt')return`Revised-text era cover · ${ed}`;return`Stock cover · ${ed}`}
+ if(c.era==='rt')return`Revised-text era cover · ${ed}`;if(c.era==='pc')return`Picture-cover edition (blue spine, revised era) · ${ed}`;return`Stock cover · ${ed}`}
 
 const FORMATS=[
  ['Grosset & Dunlap (canon)',['Red cloth (1927–32)','Red spine','Brown cloth (1932–51)','Tan tweed (1951–62)','Picture cover / “applecover” (1962+)','G&D flashlight picture cover reprint (2005–13)','G&D other / book club']],
@@ -195,7 +195,7 @@ function toast(msg,actLabel,act){const t=$('#toast');$('#toastMsg').textContent=
  b.onclick=()=>{hideToast();act&&act()};$('#toastX').onclick=hideToast;$('#toastMsg').onclick=hideToast;$('#title').hidden=true;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,4000)}
 function setHeader(title,back){$('#title').textContent=title;$('#title').hidden=$('#toast').classList.contains('show');$('#backBtn').hidden=!back;$('#hb').hidden=!!back}
 $('#backBtn').onclick=()=>history.length>1?history.back():(location.hash='#/');
-function setTab(t){document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===t))}
+function setTab(t){UI.coverCtx='';document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===t))}
 const UI={filter:{},q:''};
 
 function sheet(html){const bg=document.createElement('div');bg.className='sheet-bg';bg.innerHTML='<div class="sheet">'+html+'</div>';bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});document.body.appendChild(bg);return bg}
@@ -220,7 +220,7 @@ function observeThumbs(root){root.querySelectorAll('img.thumb[data-src]:not([src
 function coverRetry(img){const n=+(img.dataset.tries||0);if(n<2){img.dataset.tries=n+1;const u=img.src;setTimeout(()=>{if(img.isConnected){img.removeAttribute('src');img.src=u}},2000*(n+1))}else img.outerHTML='<div class="nocover">Cover unavailable right now (offline?)</div>'}
 function bindRows(root,rerender){observeThumbs(root);root.querySelectorAll('[data-own]').forEach(el=>el.onclick=e=>{e.stopPropagation();quickOwn(el.dataset.own,rerender)});
  root.querySelectorAll('[data-star]').forEach(el=>el.onclick=e=>{e.stopPropagation();toggleWish(el.dataset.star);rerender()});
- root.querySelectorAll('.row[data-id]').forEach(el=>el.onclick=()=>location.hash='#/b/'+el.dataset.id)}
+ root.querySelectorAll('.row[data-id]').forEach(el=>el.onclick=()=>{UI.bookCtx={id:el.dataset.id,ctx:UI.coverCtx||''};location.hash='#/b/'+el.dataset.id})}
 
 async function addCopy(id,extra){const b=BOOK[id];const c={id:uid(),bookId:id,text:hasTexts(b)?'':'N/A',format:'',dj:false,first:false,listTo:'',endpapers:'',illus:'',spine:'',numCover:'',printing:'',cond:'',djCond:'',price:'',acquired:new Date().toISOString().slice(0,10),source:'',notes:'',photo:'',created:Date.now(),...extra};
  S.copies.push(c);let unwished=false;if(S.wish[id]&&!S.wish[id].keep){delete S.wish[id];unwished=true}await save();return {c,unwished}}
@@ -251,7 +251,7 @@ function viewHome(){setHeader('Hardy Boys Collection');setTab('home');
  $('#app').innerHTML=h;window.scrollTo(0,UI.homeScroll||0)}
 
 function viewSeries(key){const s=allSeries().find(x=>x.key===key);if(!s)return viewHome();setHeader(s.short,true);setTab('home');UI.showSeries=false;
- const f=UI.filter[key]||'all';const st=seriesStats(s);
+ const f=UI.filter[key]||'all';const st=seriesStats(s);UI.coverCtx=/^(needrt|toprt)$/.test(f)?'rt':/^(needot|topot)$/.test(f)?'ot':'';
  const fl=[['all','All'],['owned','Owned'],['missing','Missing'],['wanted','Wanted']];if(st.tx)fl.push(['needot','Need OT'],['needrt','Need RT'],['dupes','Duplicates']);else fl.push(['dupes','Duplicates']);fl.splice(4,0,['top','Top rated']);{const used=new Set();for(const x of s.books)for(const c of copiesOf(key+'-'+x.n))if(c.spine)used.add(c.spine);for(const[v]of SPINES)if(used.has(v))fl.push(['sp:'+v,v+' spine'])}if(s.books.some(x=>dual(BOOK[key+'-'+x.n])))fl.splice(5,0,['topot','Top rated: Original'],['toprt','Top rated: Revised']);
  let h=`<div class="card"><div class="serif" style="font-weight:700;color:var(--navy)">${esc(s.name)}</div><div class="small muted">${esc(s.publisher)}</div>${s.note?`<div class="small" style="margin-top:6px">${esc(s.note)}</div>`:''}
  <div class="bar"><i style="width:${pct(st.own,st.total)}%"></i></div><div class="stat"><span>${st.own} / ${st.total} owned · ${st.total-st.own} missing</span><span>${pct(st.own,st.total)}%</span></div>
@@ -303,9 +303,9 @@ function rateCardHTML(b){const id=b.id;
  if(dual(b))return`<div class="card" id="rateCard"><div style="font-weight:700;color:var(--navy2)">Your ratings</div><div class="small muted">Rate each text separately. Tap 1–10 (tap again to clear).</div>${rateRowHTML(id,'rOT','Original text','#7a2e1f')}${rateRowHTML(id,'rRT','Revised text','#1f4e7a')}</div>`;
  return`<div class="card" id="rateCard">${rateRowHTML(id,'rating','Your rating','')}<div class="small muted" style="margin-top:4px">How good is the story? Tap 1–10 (tap again to clear).</div></div>`}
 function coverCardHTML(b){const id=b.id,u=userCover(id),st=stockCovers(id);UI.era=UI.era||{};
- let cur=u?null:(st.find(x=>x.era===UI.era[id])||preferredStock(id));
+ let cur=u?null:(st.find(x=>x.era===UI.era[id])||preferredStock(id,UI.bookCtx&&UI.bookCtx.id===id?UI.bookCtx.ctx:''));
  const img=u?`<img class="bigcover" src="${u}" alt="Your cover photo">`:cur?`<img class="bigcover" id="bigcover" alt="Stock cover" src="${olURL(cur.id,'L')}" onerror="coverRetry(this)">`:'<div class="nocover">No stock cover found.<br>Add your own photo.</div>';
- const eraSeg=!u&&st.length>1?`<div class="seg" style="margin-top:8px" id="eraSeg">${st.map(x=>`<button type="button" data-era="${x.era}" class="${cur&&x.era===cur.era?'on':''}">${x.era==='ot'?'Original era':'Revised era'}</button>`).join('')}</div>`:'';
+ const eraSeg=!u&&st.length>1?`<div class="seg" style="margin-top:8px" id="eraSeg">${st.map(x=>`<button type="button" data-era="${x.era}" class="${cur&&x.era===cur.era?'on':''}">${x.era==='ot'?'Original jacket':x.era==='pc'?'Picture cover':x.era==='rt'?'Revised era':'Stock'}</button>`).join('')}</div>`:'';
  const cap=u?'<b>Your photo</b> (overrides stock covers)':cur?`${esc(eraLabel(b,cur))}. <a href="https://openlibrary.org/books/${esc(cur.ed)}" target="_blank" rel="noopener">Open Library</a>`:'';
  const copyPhotos=copiesOf(id).filter(c=>c.photo);
  return `<div class="card"><div class="coverwrap">${img}<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--navy2)">Cover</div><div class="cap" id="coverCap">${cap}</div>${eraSeg}
@@ -382,7 +382,7 @@ async function setGroupOrder(basis,score,ids){const full=rankedItems(basis,'all'
  (S.rank[basis]||(S.rank[basis]={}))[score]=merged;await save()}
 function viewRatings(){setHeader('My Ratings');setTab('ratings');UI.showSeries=true;
  if(pruneRank())save();
- const basis=UI.rBasis||'best',sf=UI.rSeries||'all',edit=!!UI.rEdit;const ser=allSeries();
+ const basis=UI.rBasis||'best',sf=UI.rSeries||'all',edit=!!UI.rEdit;UI.coverCtx=basis==='rt'||basis==='ot'?basis:'';const ser=allSeries();
  const items=rankedItems(basis,sf);const anyRated=Object.keys(BOOK).some(id=>ratingOf(id)>0);
  let h=`<div class="chips" id="basisChips">${[['best','Best of either'],['ot','Original (#1–38)'],['rt','Revised (#1–58)']].map(([k,l])=>`<button class="chip${basis===k?' on':''}" data-basis="${k}">${l}</button>`).join('')}</div>
  <div style="display:flex;gap:8px;margin-bottom:10px"><select id="rSeries" aria-label="Series filter" style="flex:1"><option value="all">All series</option>${ser.map(s=>`<option value="${s.key}"${sf===s.key?' selected':''}>${esc(s.short)}</option>`).join('')}</select>
@@ -472,7 +472,7 @@ function viewMore(){setHeader('Backup & More');setTab('more');
  <li><a href="https://en.wikipedia.org/wiki/List_of_Hardy_Boys_books" target="_blank" rel="noopener">Wikipedia: List of Hardy Boys books</a>: all series lists, first-publication years, revised-text years, Casefiles months.</li>
  <li><a href="https://www.hardyboysonline.net/content.php?page=series-canon-revisions" target="_blank" rel="noopener">Hardy Boys Online: Revisions (Canon)</a>: revision timeline used to cross-check #1–38.</li>
  <li><a href="https://hardyboys.us/hbos.htm" target="_blank" rel="noopener">The Hardy Boys Unofficial Home Page (hardyboys.us): Original Series</a>: revision history, binding types (red cloth 1927–32, brown 1932–51, tan tweed 1951–62, picture covers from 1962) and endpaper types.</li>
- <li>Stock cover images: <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a> (Internet Archive) via its <a href="https://openlibrary.org/dev/docs/api/covers" target="_blank" rel="noopener">Covers API</a>. Each book page links to the specific edition shown. Covers were matched at build time by title, number and publisher; titles without a confident match show no stock cover. A stock cover shows one particular edition, and original-text and revised-text covers often differ, so check the label. Era labels come from the edition date in Open Library’s record, so treat them as a guide.</li>
+ <li>Stock cover images: <a href="https://openlibrary.org/" target="_blank" rel="noopener">Open Library</a> (Internet Archive) via its <a href="https://openlibrary.org/dev/docs/api/covers" target="_blank" rel="noopener">Covers API</a>. Each book page links to the specific edition shown. For the original series, a separate picture-cover image (the 1960s+ blue-spine edition) was hand-checked for 56 of #1–58 (none found for #36 and #38); it is shown in Revised contexts (Revised ranking, Need/Top-rated Revised filters, revised-only copies) and for #39–58. Covers were matched at build time by title, number and publisher; titles without a confident match show no stock cover. A stock cover shows one particular edition, and original-text and revised-text covers often differ, so check the label. Era labels come from the edition date in Open Library’s record, so treat them as a guide.</li>
  <li>Ghostwriters (#1–58) and revised-text writers: Wikipedia’s list, cross-checked against the hardyboys.us author tables; disagreements are noted on the book page. Cover-artist choices follow <a href="https://hardyboys.us/hbart.htm" target="_blank" rel="noopener">hardyboys.us cover art</a> and <a href="https://www.hardyboysonline.net/content.php?page=series-canon-coverart" target="_blank" rel="noopener">Hardy Boys Online</a>.</li>
  <li><a href="https://en.wikipedia.org/wiki/Super_Mystery" target="_blank" rel="noopener">Wikipedia: Super Mystery</a>: the 1988–98 SuperMystery list.</li></ul>
  <p class="small muted">Note: the first three books were written in 1926 and released as a “breeder set” in May 1927, so 1927 is shown as their publication year. #7 <i>The Secret of the Caves</i>: revised-text year is 1965 per Wikipedia and hardyboys.us (hardyboysonline.net says 1964).</p>
