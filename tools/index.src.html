@@ -61,6 +61,12 @@ nav.tabs a.on{color:var(--gold2)}
 .rates button{height:40px;border-radius:8px;border:1px solid var(--navy2);background:#fff;color:var(--navy2);font:700 15px Georgia,serif;cursor:pointer;padding:0}
 .rates button.lit{background:#f3e3a6;border-color:var(--gold)}
 .rates button.on{background:var(--gold);border-color:var(--navy);color:var(--navy);box-shadow:inset 0 0 0 2px var(--navy)}
+.row.editing{cursor:default;gap:8px;padding-left:4px}
+.row.dragging{background:#fff6d6;box-shadow:0 4px 14px rgba(0,0,0,.25);position:relative;z-index:5}
+.handle{touch-action:none;width:40px;height:48px;flex:none;border:0;background:transparent;color:var(--navy2);font-size:24px;cursor:grab;-webkit-user-select:none;user-select:none}
+.mv{display:flex;flex-direction:column;gap:4px;flex:none}
+.mv button{width:44px;height:30px;border-radius:8px;border:1px solid var(--navy2);background:#fff;color:var(--navy2);font-size:13px;cursor:pointer}
+.mv button:disabled{opacity:.3}
 .smallbtn{font-size:13px!important;padding:7px 10px!important}
 .rmain{flex:1;min-width:0}
 .rt{font:600 15.5px/1.25 Georgia,serif;color:var(--ink)}
@@ -135,10 +141,10 @@ function kvGet(k){if(!idb){try{return Promise.resolve(JSON.parse(localStorage.ge
 function kvSet(k,v){if(!idb){localStorage.setItem('hb_'+k,JSON.stringify(v));return Promise.resolve()}
  return new Promise((res,rej)=>{const tx=idb.transaction(STORE,'readwrite');tx.objectStore(STORE).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 
-const S={copies:[],wish:{},custom:[],meta:{},titles:{}};
-async function load(){await openDB();S.copies=(await kvGet('copies'))||[];S.wish=(await kvGet('wish'))||{};S.custom=(await kvGet('custom'))||[];S.meta=(await kvGet('meta'))||{};S.titles=(await kvGet('titles'))||{};
+const S={copies:[],wish:{},custom:[],meta:{},titles:{},rank:{}};
+async function load(){await openDB();S.copies=(await kvGet('copies'))||[];S.wish=(await kvGet('wish'))||{};S.custom=(await kvGet('custom'))||[];S.meta=(await kvGet('meta'))||{};S.titles=(await kvGet('titles'))||{};S.rank=(await kvGet('rank'))||{};
  if(navigator.storage&&navigator.storage.persist){try{await navigator.storage.persist()}catch(e){}}}
-async function save(){await Promise.all([kvSet('copies',S.copies),kvSet('wish',S.wish),kvSet('custom',S.custom),kvSet('meta',S.meta),kvSet('titles',S.titles)])}
+async function save(){await Promise.all([kvSet('copies',S.copies),kvSet('wish',S.wish),kvSet('custom',S.custom),kvSet('meta',S.meta),kvSet('titles',S.titles),kvSet('rank',S.rank)])}
 
 // ---------- catalog helpers ----------
 function allSeries(){const cs=S.custom.length?[{key:'custom',name:'My Additions',short:'My Additions',publisher:'Added by you',note:'Titles you added that are not in the built-in checklist (e.g., foreign editions, graphic novels, oddities).',group:'Mine',books:S.custom}]:[];return SERIES.concat(cs)}
@@ -276,8 +282,8 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  const wn=$('#wishNote');if(wn)wn.onchange=async()=>{S.wish[id].note=wn.value;await save();toast('Wishlist note saved')};
  const wk=$('#wishKeep');if(wk)wk.onchange=async()=>{S.wish[id].keep=wk.checked;await save()};
  const keepY=()=>{const y=window.scrollY;viewBook(id);window.scrollTo(0,y)};
- $('#app').querySelectorAll('[data-rate]').forEach(el=>el.onclick=async()=>{const[k,ns]=el.dataset.rate.split(':');const n=+ns;if(getR(id,k)===n)delete T(id)[k];else T(id)[k]=n;tidyTitle(id);await save();keepY()});
- $('#app').querySelectorAll('[data-clear]').forEach(el=>el.onclick=async()=>{delete T(id)[el.dataset.clear];tidyTitle(id);await save();keepY()});
+ $('#app').querySelectorAll('[data-rate]').forEach(el=>el.onclick=async()=>{const[k,ns]=el.dataset.rate.split(':');const n=+ns;if(getR(id,k)===n)delete T(id)[k];else T(id)[k]=n;tidyTitle(id);pruneRank();await save();keepY()});
+ $('#app').querySelectorAll('[data-clear]').forEach(el=>el.onclick=async()=>{delete T(id)[el.dataset.clear];tidyTitle(id);pruneRank();await save();keepY()});
  bindCoverCard(b,keepY);
  $('#app').querySelectorAll('[data-copy]').forEach(el=>el.onclick=()=>location.hash=`#/c/${id}/${el.dataset.copy}`);
  const dc=$('#delCustom');if(dc)dc.onclick=async()=>{if(!confirm('Delete this custom title and its copies?'))return;S.custom=S.custom.filter(x=>'custom-'+x.n!==id);S.copies=S.copies.filter(c=>c.bookId!==id);delete S.wish[id];await save();indexBooks();location.hash='#/'}}
@@ -348,22 +354,64 @@ function viewSearch(){setHeader('Search');setTab('search');UI.showSeries=true;
 
 // ---------- My Ratings ----------
 function ratingScore(id,basis){const b=BOOK[id];if(basis==='ot')return dual(b)?getR(id,'rOT'):0;if(basis==='rt')return dual(b)?getR(id,'rRT'):0;return ratingOf(id)}
+// Custom order within a score group: S.rank[basis][score] = [bookId,...]. Unlisted books sort to the bottom (default order).
+function pruneRank(){let ch=false;for(const basis of Object.keys(S.rank)){const g=S.rank[basis];for(const sc of Object.keys(g)){const keep=g[sc].filter((id,i,a)=>BOOK[id]&&ratingScore(id,basis)===+sc&&a.indexOf(id)===i);if(keep.length!==g[sc].length){ch=true;if(keep.length)g[sc]=keep;else delete g[sc]}}if(!Object.keys(g).length){delete S.rank[basis];ch=true;continue}
+  // books that newly joined a custom-ordered group are appended to its bottom, in the order they arrived
+  for(const b of rankedItems(basis,'all')){const sc=ratingScore(b.id,basis),arr=g[sc];if(arr&&!arr.includes(b.id)){arr.push(b.id);ch=true}}}return ch}
+function rankedItems(basis,sf){const ser=allSeries();const order=Object.fromEntries(ser.map((s,i)=>[s.key,i]));const all=Object.values(BOOK).filter(b=>ratingScore(b.id,basis)>0);
+ const def=(a,c)=>order[a.sk]-order[c.sk]||a.n-c.n;const g=S.rank[basis]||{};
+ const pos=(b,sc)=>{const arr=g[sc];const k=arr?arr.indexOf(b.id):-1;return k<0?1e9:k};
+ all.sort((a,c)=>{const sa=ratingScore(a.id,basis),sc=ratingScore(c.id,basis);if(sa!==sc)return sc-sa;return pos(a,sa)-pos(c,sc)||def(a,c)});
+ return sf==='all'?all:all.filter(b=>b.sk===sf)}
+async function setGroupOrder(basis,score,ids){const full=rankedItems(basis,'all').filter(b=>ratingScore(b.id,basis)===score).map(b=>b.id);
+ // ids may be a filtered subset (series filter): splice the new subset order into the full group's order
+ const set=new Set(ids);let k=0;const merged=full.map(id=>set.has(id)?ids[k++]:id);
+ (S.rank[basis]||(S.rank[basis]={}))[score]=merged;await save()}
 function viewRatings(){setHeader('My Ratings');setTab('ratings');UI.showSeries=true;
- const basis=UI.rBasis||'best',sf=UI.rSeries||'all';const ser=allSeries();const order=Object.fromEntries(ser.map((s,i)=>[s.key,i]));
- const items=Object.values(BOOK).filter(b=>(sf==='all'||b.sk===sf)&&ratingScore(b.id,basis)>0)
-  .sort((a,c)=>ratingScore(c.id,basis)-ratingScore(a.id,basis)||order[a.sk]-order[c.sk]||a.n-c.n);
- const anyRated=Object.keys(BOOK).some(id=>ratingOf(id)>0);
+ if(pruneRank())save();
+ const basis=UI.rBasis||'best',sf=UI.rSeries||'all',edit=!!UI.rEdit;const ser=allSeries();
+ const items=rankedItems(basis,sf);const anyRated=Object.keys(BOOK).some(id=>ratingOf(id)>0);
  let h=`<div class="chips" id="basisChips">${[['best','Best of either'],['ot','Original text'],['rt','Revised text']].map(([k,l])=>`<button class="chip${basis===k?' on':''}" data-basis="${k}">${l}</button>`).join('')}</div>
- <select id="rSeries" aria-label="Series filter" style="margin-bottom:10px"><option value="all">All series</option>${ser.map(s=>`<option value="${s.key}"${sf===s.key?' selected':''}>${esc(s.short)}</option>`).join('')}</select>
- ${basis!=='best'?'<div class="small muted" style="margin:-4px 4px 8px">Original/Revised ratings apply to #1–38 of the original series.</div>':''}`;
+ <div style="display:flex;gap:8px;margin-bottom:10px"><select id="rSeries" aria-label="Series filter" style="flex:1"><option value="all">All series</option>${ser.map(s=>`<option value="${s.key}"${sf===s.key?' selected':''}>${esc(s.short)}</option>`).join('')}</select>
+ ${items.length?`<button class="btn ${edit?'gold':'ghost'}" id="editOrder" style="white-space:nowrap">${edit?'✓ Done':'↕ Edit order'}</button>`:''}</div>
+ ${basis!=='best'?'<div class="small muted" style="margin:-4px 4px 8px">Original/Revised ratings apply to #1–38 of the original series.</div>':''}
+ ${edit?'<div class="banner" id="editHelp">Drag ≡ or use ▲ ▼ to reorder books <b>within the same score</b>. Your order is saved for this sort basis.</div>':''}`;
  if(!anyRated)h+=`<div class="card empty" id="ratingsEmpty"><div style="font-size:34px">🏆</div><b>No ratings yet</b><br>Open any book and tap a number from 1 to 10 under <b>Your rating</b>. On #1–38 of the original series you can rate the Original text and the Revised text separately.<br><br>Your rated books will be ranked here, best first.<br><a class="btn gold" href="#/s/gd" style="margin-top:12px">Browse the original series</a></div>`;
  else if(!items.length)h+='<div class="empty" id="ratingsEmpty">No rated books match this filter.</div>';
- else{h+=`<div class="small muted" style="margin:0 4px 8px">${items.length} rated · highest first</div><div class="list">`;let cur=0;
-  for(const b of items){const sc=ratingScore(b.id,basis);if(sc!==cur){cur=sc;const n=items.filter(x=>ratingScore(x.id,basis)===sc).length;h+=`<div class="sub-h" data-score="${sc}">★ ${sc} · ${n} book${n===1?'':'s'}</div>`}h+=rowHTML(b)}h+='</div>'}
+ else{h+=`<div class="small muted" style="margin:0 4px 8px">${items.length} rated · highest first</div><div class="list" id="rankList">`;let cur=0;
+  const groups={};for(const b of items){const sc=ratingScore(b.id,basis);(groups[sc]||(groups[sc]=[])).push(b)}
+  for(const sc of Object.keys(groups).map(Number).sort((a,c)=>c-a)){const gb=groups[sc],n=gb.length,custom=!!(S.rank[basis]&&S.rank[basis][sc]);
+   h+=`<div class="sub-h" data-score="${sc}" style="display:flex;align-items:center"><span style="flex:1">★ ${sc} · ${n} book${n===1?'':'s'}${custom?' · your order':''}</span>${edit&&custom?`<button class="btn ghost smallbtn" data-reset="${sc}" style="padding:3px 8px!important;font-size:11px!important">Reset to default</button>`:''}</div>`;
+   gb.forEach((b,i)=>{h+=edit?rowEditHTML(b,sc,i,n):rowHTML(b)})}
+  h+='</div>'}
  $('#app').innerHTML=h;
  $('#app').querySelectorAll('[data-basis]').forEach(el=>el.onclick=()=>{UI.rBasis=el.dataset.basis;viewRatings()});
  $('#rSeries').onchange=e=>{UI.rSeries=e.target.value;viewRatings()};
- bindRows($('#app'),()=>{const y=window.scrollY;viewRatings();window.scrollTo(0,y)})}
+ const eo=$('#editOrder');if(eo)eo.onclick=()=>{UI.rEdit=!UI.rEdit;viewRatings()};
+ const keep=()=>{const y=window.scrollY;viewRatings();window.scrollTo(0,y)};
+ if(!edit){bindRows($('#app'),keep);return}
+ observeThumbs($('#app'));
+ const groupIds=sc=>[...$('#app').querySelectorAll(`.row[data-score="${sc}"]`)].map(r=>r.dataset.id);
+ $('#app').querySelectorAll('[data-mv]').forEach(el=>el.onclick=async e=>{e.stopPropagation();const row=el.closest('.row'),sc=+row.dataset.score,ids=groupIds(sc),i=ids.indexOf(row.dataset.id),j=i+(el.dataset.mv==='up'?-1:1);
+  if(j<0||j>=ids.length)return;[ids[i],ids[j]]=[ids[j],ids[i]];await setGroupOrder(basis,sc,ids);keep();const r2=$(`.row[data-id="${row.dataset.id}"] [data-mv="${el.dataset.mv}"]`);if(r2&&!r2.disabled)r2.focus()});
+ $('#app').querySelectorAll('[data-reset]').forEach(el=>el.onclick=async()=>{if(S.rank[basis])delete S.rank[basis][el.dataset.reset];pruneRank();await save();keep();toast('Default order restored')});
+ $('#app').querySelectorAll('.handle').forEach(hd=>bindDrag(hd,basis,groupIds,keep))}
+function rowEditHTML(b,sc,i,n){const r=rowHTML(b);const inner=r.slice(r.indexOf('<div class="rmain">'),r.indexOf('<button class="star'));
+ return `<div class="row editing" data-id="${b.id}" data-score="${sc}"><button class="handle" aria-label="Drag to reorder" type="button">≡</button><div class="num">${esc(b.n)}</div>${inner}
+ <div class="mv"><button data-mv="up" aria-label="Move up" ${i===0?'disabled':''}>▲</button><button data-mv="down" aria-label="Move down" ${i===n-1?'disabled':''}>▼</button></div></div>`}
+// Drag only from the ≡ handle (touch-action:none there), so scrolling the list elsewhere never starts a drag.
+function bindDrag(hd,basis,groupIds,done){hd.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();const row=hd.closest('.row'),sc=row.dataset.score;
+ const sibs=()=>[...row.parentNode.querySelectorAll(`.row[data-score="${sc}"]`)];if(sibs().length<2)return;
+ hd.setPointerCapture(e.pointerId);row.classList.add('dragging');let lastY=e.clientY,moved=false,raf=0;
+ const move=ev=>{lastY=ev.clientY;moved=true;const list=sibs();
+  for(const o of list){if(o===row)continue;const r=o.getBoundingClientRect(),mid=r.top+r.height/2,me=row.getBoundingClientRect();
+   if(lastY<mid&&me.top>r.top){o.before(row);break}if(lastY>mid&&me.top<r.top){o.after(row);break}}
+  if(!raf){const tick=()=>{raf=0;const edge=90;if(lastY<edge+60)window.scrollBy(0,-12);else if(lastY>innerHeight-edge-70)window.scrollBy(0,12);else return;raf=requestAnimationFrame(tick)};if(lastY<150||lastY>innerHeight-160)raf=requestAnimationFrame(tick)}};
+ const up=async ev=>{if(ev.pointerId!==e.pointerId)return;window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);cancelAnimationFrame(raf);row.classList.remove('dragging');
+  if(moved){await setGroupOrder(basis,+sc,groupIds(sc));done()}};
+ // listen on window: moving the row in the DOM can drop pointer capture, but window still gets every event
+ const mv=ev=>{if(ev.pointerId===e.pointerId){ev.preventDefault();move(ev)}};
+ window.addEventListener('pointermove',mv,{passive:false});window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up)})}
 
 function wishText(){const lines=['Hardy Boys want list'];let cur='';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n,w=S.wish[id];if(!w)continue;if(cur!==s.key){cur=s.key;lines.push('',s.short)}lines.push(`#${b.n} ${b.t}${w.note?' — '+w.note:''}`)}return lines.join('\n')}
 function viewWish(){setHeader('Wishlist');setTab('wish');UI.showSeries=true;const ids=Object.keys(S.wish).filter(id=>BOOK[id]);
@@ -381,7 +429,7 @@ function download(name,text,type){const blob=new Blob([text],{type});const f=new
  if(navigator.canShare&&navigator.canShare({files:[f]})&&/iPhone|iPad|iPod/.test(navigator.userAgent)){navigator.share({files:[f],title:name}).catch(()=>{});return}
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
 const stamp=()=>new Date().toISOString().slice(0,10);
-function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom,titles:withPhotos?S.titles:Object.fromEntries(Object.entries(S.titles).map(([k,v])=>[k,{...v,cover:v.cover&&v.cover.startsWith('copy:')?v.cover:undefined}]))};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
+function exportJSON(withPhotos){const data={app:'hardyboys-catalog',version:1,exported:new Date().toISOString(),copies:withPhotos?S.copies:S.copies.map(c=>({...c,photo:''})),wish:S.wish,custom:S.custom,rank:S.rank,titles:withPhotos?S.titles:Object.fromEntries(Object.entries(S.titles).map(([k,v])=>[k,{...v,cover:v.cover&&v.cover.startsWith('copy:')?v.cover:undefined}]))};download(`hardy-boys-backup-${stamp()}${withPhotos?'':'-nophotos'}.json`,JSON.stringify(data),'application/json');S.meta.lastBackup=Date.now();save()}
 const csvCell=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
 function exportCopiesCSV(){const head=['Series','No.','Title','First pub.','Revised text year','Text','Format','Dust jacket','DJ condition','Condition','First printing','Lists to','Endpapers','Printing notes','Price','Date acquired','Acquired from','Notes','Has photo','My rating','My rating (Original text)','My rating (Revised text)'];
  const rows=S.copies.map(c=>{const b=BOOK[c.bookId]||{};return[b.sname,b.n,b.t,b.y,b.ry,c.text,c.format,c.dj?'Yes':'No',c.djCond,c.cond,c.first?'Yes':'',c.listTo,c.endpapers,c.printing,c.price,c.acquired,c.source,c.notes,c.photo?'Yes':'',getR(c.bookId,'rating')||'',getR(c.bookId,'rOT')||'',getR(c.bookId,'rRT')||'']});
@@ -391,9 +439,9 @@ function exportChecklistCSV(){const head=['Series','No.','Title','First pub.','R
  download(`hardy-boys-checklist-${stamp()}.csv`,'\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')}
 async function importJSON(file,mode){const txt=await file.text();let d;try{d=JSON.parse(txt)}catch(e){toast('That file isn’t valid JSON');return}
  if(d.app!=='hardyboys-catalog'||!Array.isArray(d.copies)){toast('Not a Hardy Boys catalog backup');return}
- migrateTitles(d.titles);if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[];S.titles=d.titles||{}}
- else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});for(const[k,v]of Object.entries(d.titles||{}))S.titles[k]={...(S.titles[k]||{}),...v};const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
- await save();indexBooks();toast(`Imported: ${S.copies.length} copies now in catalog`);route()}
+ migrateTitles(d.titles);if(mode==='replace'){S.copies=d.copies;S.wish=d.wish||{};S.custom=d.custom||[];S.titles=d.titles||{};S.rank=d.rank||{}}
+ else{const have=new Set(S.copies.map(c=>c.id));let n=0;for(const c of d.copies)if(!have.has(c.id)){S.copies.push(c);n++}Object.assign(S.wish,d.wish||{});for(const[k,v]of Object.entries(d.titles||{}))S.titles[k]={...(S.titles[k]||{}),...v};for(const[bs,g]of Object.entries(d.rank||{}))S.rank[bs]={...(S.rank[bs]||{}),...g};const ch=new Set(S.custom.map(c=>c.n));for(const c of d.custom||[])if(!ch.has(c.n))S.custom.push(c)}
+ indexBooks();pruneRank();await save();toast(`Imported: ${S.copies.length} copies now in catalog`);route()}
 
 function viewMore(){setHeader('Backup & More');setTab('more');
  const last=S.meta.lastBackup?new Date(S.meta.lastBackup).toLocaleDateString():'never';const photos=S.copies.filter(c=>c.photo).length;
@@ -421,7 +469,7 @@ function viewMore(){setHeader('Backup & More');setTab('more');
  $('#showCovers').onchange=async e=>{S.meta.hideCovers=!e.target.checked;await save()};$('#bkFull').onclick=()=>exportJSON(true);$('#bkLite').onclick=()=>exportJSON(false);$('#csvCopies').onclick=exportCopiesCSV;$('#csvList').onclick=exportChecklistCSV;
  $('#imp').onclick=()=>{const bg=sheet('<h4>Restore a backup</h4><div class="small muted">Merge adds copies you don’t already have. Replace overwrites everything on this device.</div><button class="btn" data-m="merge">Choose file · Merge</button><button class="btn red" data-m="replace">Choose file · Replace all</button><button class="btn ghost" data-m="">Cancel</button>');
   bg.querySelectorAll('[data-m]').forEach(el=>el.onclick=()=>{bg.remove();if(!el.dataset.m)return;const fi=$('#importFile');fi.value='';fi.onchange=()=>fi.files[0]&&importJSON(fi.files[0],el.dataset.m);fi.click()})};
- $('#wipe').onclick=async()=>{if(!confirm('Erase ALL copies, wishlist and custom titles on this device?'))return;if(prompt('Type ERASE to confirm')!=='ERASE')return;S.copies=[];S.wish={};S.custom=[];S.titles={};await save();indexBooks();toast('All data erased');viewMore()}}
+ $('#wipe').onclick=async()=>{if(!confirm('Erase ALL copies, wishlist and custom titles on this device?'))return;if(prompt('Type ERASE to confirm')!=='ERASE')return;S.copies=[];S.wish={};S.custom=[];S.titles={};S.rank={};await save();indexBooks();toast('All data erased');viewMore()}}
 
 function viewAddCustom(){setHeader('Add custom title',true);setTab('more');
  $('#app').innerHTML=`<div class="card"><label class="f">Title</label><input type="text" id="ct"><label class="f">Series / description</label><input type="text" id="cs" placeholder="e.g., Armada UK paperback, Papercutz graphic novel #3"><label class="f">Year (optional)</label><input type="number" id="cy" inputmode="numeric"><button class="btn block gold" id="cadd">Add title</button></div>`;
