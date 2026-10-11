@@ -1,5 +1,5 @@
 // Hardy Boys Collection service worker (offline app shell)
-const CACHE='hb-1.5-207a02de';
+const CACHE='hb-1.6-c356ffb9';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 const COVER_CACHE='hb-covers-v1'; // kept across app versions: stock covers you've viewed stay available offline

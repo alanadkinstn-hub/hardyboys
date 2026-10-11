@@ -67,6 +67,7 @@ nav.tabs a.on{color:var(--gold2)}
 .mv{display:flex;flex-direction:column;gap:4px;flex:none}
 .mv button{width:44px;height:30px;border-radius:8px;border:1px solid var(--navy2);background:#fff;color:var(--navy2);font-size:13px;cursor:pointer}
 .mv button:disabled{opacity:.3}
+.row .star{filter:grayscale(1);opacity:.35}.row .star.on{filter:none;opacity:1}
 .smallbtn{font-size:13px!important;padding:7px 10px!important}
 .rmain{flex:1;min-width:0}
 .rt{font:600 15.5px/1.25 Georgia,serif;color:var(--ink)}
@@ -200,7 +201,7 @@ function rowHTML(b){const id=b.id,cs=copiesOf(id),own=cs.length>0,w=!!S.wish[id]
  let th='';if(!S.meta.hideCovers){const u=userCover(id),sc=u?null:preferredStock(id);th=u?`<img class="thumb" src="${u}" alt="">`:sc?`<img class="thumb pending" decoding="async" alt="" data-src="${olURL(sc.id,'M')}">`:'<div class="thumb none"></div>'}
  let sub=[];if(b.y)sub.push(b.m?b.m.slice(0,3)+' '+b.y:b.y);if(b.ry)sub.push('Rev. '+b.ry);if(UI.showSeries)sub.unshift(b.sname);
  return `<div class="row${own?' owned':''}" data-id="${id}"><div class="num">${esc(b.n)}</div>${th}<div class="rmain"><div class="rt">${esc(b.t)}</div><div class="rs">${esc(sub.join(' · '))}${badges?'<span class="badges">'+badges+'</span>':''}</div></div>
- <button class="star${w?' on':''}" data-star="${id}" aria-label="Wishlist">${w?'★':'☆'}</button><button class="own${own?' on':''}" data-own="${id}" aria-label="Own it">${own?(cs.length>1?'×'+cs.length:'✓'):'+'}</button></div>`}
+ <button class="star${w?' on':''}" data-star="${id}" aria-label="${w?'On wishlist (tap to remove)':'Add to wishlist'}" title="Wishlist">📌</button><button class="own${own?' on':''}" data-own="${id}" aria-label="Own it">${own?(cs.length>1?'×'+cs.length:'✓'):'+'}</button></div>`}
 // Polite cover loading: only rows near the screen, max 2 at a time, retry with backoff (archive.org can return 503 under bursts).
 const thumbQ=[];let thumbActive=0;
 const thumbIO='IntersectionObserver' in window?new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){thumbIO.unobserve(e.target);thumbQ.push(e.target);pumpThumbs()}},{rootMargin:'300px 0px'}):null;
@@ -268,7 +269,7 @@ function viewBook(id){const b=BOOK[id];if(!b)return viewHome();setHeader('#'+b.n
  ${hasTexts(b)?`<div class="small" style="margin-top:6px">Own: <span class="b ${textOwned(id,'Original')?'ot':''}">Original text ${textOwned(id,'Original')?'✓':'—'}</span> <span class="b ${textOwned(id,'Revised')?'rt':''}">Revised text ${textOwned(id,'Revised')?'✓':'—'}</span></div>`:''}</div>
  ${coverCardHTML(b)}
  ${rateCardHTML(b)}
- <div class="card"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:700;color:var(--navy2)">${w?'★ On your wishlist':'☆ Not on wishlist'}</div><button class="btn ${w?'ghost':'gold'}" id="wishBtn">${w?'Remove':'Add to wishlist'}</button></div>
+ <div class="card"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-weight:700;color:var(--navy2)">${w?'📌 On your wishlist':'Not on wishlist'}</div><button class="btn ${w?'ghost':'gold'}" id="wishBtn">${w?'Remove':'Add to wishlist'}</button></div>
  ${w?`<label class="f">What you’re looking for</label><input type="text" id="wishNote" placeholder="e.g., OT with DJ, brown cloth, VG or better" value="${esc(w.note||'')}"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="wishKeep" ${w.keep?'checked':''}> Keep on wishlist after I add a copy (upgrade hunting)</label>`:''}</div>
  <div class="serieshead">Your copies (${cs.length})</div>`;
  if(!cs.length)h+='<div class="card empty" style="padding:18px">You don’t have this one yet.</div>';
@@ -374,7 +375,7 @@ function viewRatings(){setHeader('My Ratings');setTab('ratings');UI.showSeries=t
  let h=`<div class="chips" id="basisChips">${[['best','Best of either'],['ot','Original text'],['rt','Revised text']].map(([k,l])=>`<button class="chip${basis===k?' on':''}" data-basis="${k}">${l}</button>`).join('')}</div>
  <div style="display:flex;gap:8px;margin-bottom:10px"><select id="rSeries" aria-label="Series filter" style="flex:1"><option value="all">All series</option>${ser.map(s=>`<option value="${s.key}"${sf===s.key?' selected':''}>${esc(s.short)}</option>`).join('')}</select>
  ${items.length?`<button class="btn ${edit?'gold':'ghost'}" id="editOrder" style="white-space:nowrap">${edit?'✓ Done':'↕ Edit order'}</button>`:''}</div>
- ${basis!=='best'?'<div class="small muted" style="margin:-4px 4px 8px">Original/Revised ratings apply to #1–38 of the original series.</div>':''}
+ ${basis!=='best'?(()=>{const hid=Object.values(BOOK).filter(b=>!dual(b)&&ratingOf(b.id)>0&&(sf==='all'||b.sk===sf)).length;return `<div class="banner" id="basisNote">Original/Revised ratings apply only to #1–38 of the original series.${hid?` <b>${hid} other rated book${hid===1?' is':'s are'} hidden</b> — <a href="#" id="toBest">show Best of either</a>.`:''}</div>`})():''}
  ${edit?'<div class="banner" id="editHelp">Drag ≡ or use ▲ ▼ to reorder books <b>within the same score</b>. Your order is saved for this sort basis.</div>':''}`;
  if(!anyRated)h+=`<div class="card empty" id="ratingsEmpty"><div style="font-size:34px">🏆</div><b>No ratings yet</b><br>Open any book and tap a number from 1 to 10 under <b>Your rating</b>. On #1–38 of the original series you can rate the Original text and the Revised text separately.<br><br>Your rated books will be ranked here, best first.<br><a class="btn gold" href="#/s/gd" style="margin-top:12px">Browse the original series</a></div>`;
  else if(!items.length)h+='<div class="empty" id="ratingsEmpty">No rated books match this filter.</div>';
@@ -387,7 +388,7 @@ function viewRatings(){setHeader('My Ratings');setTab('ratings');UI.showSeries=t
  $('#app').innerHTML=h;
  $('#app').querySelectorAll('[data-basis]').forEach(el=>el.onclick=()=>{UI.rBasis=el.dataset.basis;viewRatings()});
  $('#rSeries').onchange=e=>{UI.rSeries=e.target.value;viewRatings()};
- const eo=$('#editOrder');if(eo)eo.onclick=()=>{UI.rEdit=!UI.rEdit;viewRatings()};
+ const tb=$('#toBest');if(tb)tb.onclick=e=>{e.preventDefault();UI.rBasis='best';viewRatings()};const eo=$('#editOrder');if(eo)eo.onclick=()=>{UI.rEdit=!UI.rEdit;viewRatings()};
  const keep=()=>{const y=window.scrollY;viewRatings();window.scrollTo(0,y)};
  if(!edit){bindRows($('#app'),keep);return}
  observeThumbs($('#app'));
@@ -415,7 +416,7 @@ function bindDrag(hd,basis,groupIds,done){hd.addEventListener('pointerdown',e=>{
 
 function wishText(){const lines=['Hardy Boys want list'];let cur='';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n,w=S.wish[id];if(!w)continue;if(cur!==s.key){cur=s.key;lines.push('',s.short)}lines.push(`#${b.n} ${b.t}${w.note?' — '+w.note:''}`)}return lines.join('\n')}
 function viewWish(){setHeader('Wishlist');setTab('wish');UI.showSeries=true;const ids=Object.keys(S.wish).filter(id=>BOOK[id]);
- let h=ids.length?`<div class="small muted" style="margin:0 4px 8px">${ids.length} wanted · tap ☆ on any title to add. Notes show what you’re hunting for.</div>`:'<div class="empty">Your wishlist is empty.<br>Tap ☆ next to any title to add it.</div>';
+ let h=ids.length?`<div class="small muted" style="margin:0 4px 8px">${ids.length} wanted · tap 📌 on any title to add. Notes show what you’re hunting for.</div>`:'<div class="empty">Your wishlist is empty.<br>Tap 📌 next to any title to add it.</div>';
  if(ids.length){let cur='';h+='<div class="list">';for(const s of allSeries())for(const b of s.books){const id=s.key+'-'+b.n;if(!S.wish[id])continue;if(cur!==s.key){cur=s.key;h+=`<div class="sub-h">${esc(s.short)}</div>`}h+=rowHTML(BOOK[id]).replace('</div></div>',(S.wish[id].note?`<div class="small" style="color:#7a5a00">🔎 ${esc(S.wish[id].note)}</div>`:'')+'</div></div>')}h+='</div>';
   h+=`<button class="btn block" id="shareWish">Share / copy want list</button><div class="small muted" style="text-align:center;margin-top:6px">Handy for book fairs and dealers.</div>`}
  h+=`<button class="btn block ghost" id="fillMissing">Add all missing titles from a series…</button>`;
