@@ -1,11 +1,11 @@
-// v1.11: picture-cover images in revised contexts; user cover still wins.
+// v1.12: picture-cover images in revised contexts; user cover still wins.
 const { chromium } = require('playwright-core');
 const U=process.argv[2]||'http://localhost:8765/';const ok=(c,m)=>{if(!c){console.log('FAIL:',m);process.exitCode=1}else console.log('PASS:',m)};
 (async()=>{const b=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
 for(const vp of [{width:390,height:844},{width:375,height:667},{width:430,height:932}]){const t=`[${vp.width}]`;
 const p=await (await b.newContext({viewport:vp,isMobile:true,hasTouch:true})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
 await p.goto(U);await p.waitForSelector('.scard');
-const pc=await p.evaluate(()=>Object.keys(COVERS).filter(k=>/^gd-\d+$/.test(k)&&COVERS[k].pc&&+k.slice(3)<=58).length);ok(pc===56,`${t} 56 picture covers (${pc})`);
+const pc=await p.evaluate(()=>Object.keys(COVERS).filter(k=>/^gd-\d+$/.test(k)&&COVERS[k].pc&&+k.slice(3)<=58).length);ok(pc===58,`${t} 58 picture covers (${pc})`);
 await p.evaluate(async()=>{S.titles={'gd-1':{rOT:8,rRT:9},'gd-45':{rating:7},'gd-36':{rOT:5,rRT:6}};await save()});
 await p.goto(U+'#/ratings');await p.waitForSelector('#basisChips');await p.click('[data-basis="rt"]');await p.waitForTimeout(300);
 const src=async id=>p.$eval(`.row[data-id="${id}"] img.thumb`,e=>e.dataset.src||e.src).catch(()=>'');
