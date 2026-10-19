@@ -11,7 +11,7 @@ await p.goto(U+'#/ratings');await p.waitForSelector('#basisChips');await p.click
 const src=async id=>p.$eval(`.row[data-id="${id}"] img.thumb`,e=>e.dataset.src||e.src).catch(()=>'');
 ok((await src('gd-1')).includes('13350591'),`${t} Revised ranking: #1 shows picture cover`);
 ok((await src('gd-45')).includes('9312592'),`${t} Revised ranking: #45 picture cover`);
-ok(await p.$eval('.row[data-id="gd-36"] .thumb',e=>e.classList.contains('none')),`${t} #36 (no cover anywhere) shows placeholder`);
+ok(await p.$eval('.row[data-id="gd-36"] .thumb',e=>!e.classList.contains('none')),`${t} #36 shows its v1.12 picture cover`);
 await p.click('[data-basis="ot"]');await p.waitForTimeout(300);ok((await src('gd-1')).includes('13180834'),`${t} Original ranking: #1 original jacket`);
 await p.click('[data-basis="rt"]');await p.waitForTimeout(300);await p.click('.row[data-id="gd-1"]');await p.waitForSelector('#coverCap');
 ok(await p.$eval('#bigcover',e=>e.src.includes('13350591')),`${t} book page from Revised context shows picture cover`);
